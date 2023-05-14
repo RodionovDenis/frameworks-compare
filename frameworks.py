@@ -1,5 +1,3 @@
-from iOpt.trial import FunctionValue, Point
-import numpy.typing as npt
 import optuna
 import hyperopt
 
@@ -9,16 +7,27 @@ from iOpt.solver_parametrs import SolverParameters
 
 from abc import ABC, abstractclassmethod
 from dataclasses import dataclass, astuple
+from enum import Enum
 
 from metrics import Metric
 from data.loader import Dataset
 
+
+class Type(Enum):
+    int = 0
+    float = 1
+
+
 @dataclass
 class Hyperparameter:
     name: str
-    group: type
+    group: Type
     min_value: float
     max_value: float
+
+
+def dict_factory(data):
+    return {k: v.name if isinstance(v, Type) else v for k, v in data}
 
 
 class Searcher(ABC):
@@ -27,7 +36,7 @@ class Searcher(ABC):
 
     @abstractclassmethod
     def tune(self,
-             estimator, 
+             estimator,
              hyperparams: list[Hyperparameter],
              dataset: Dataset,
              metric: Metric):
@@ -56,9 +65,9 @@ class OptunaSearcher(Searcher):
         arguments = {}
         for params in self.hyperparams:
             name, group, min_value, max_value = astuple(params)
-            if group is float:
+            if group is Type.float:
                 arguments[name] = trial.suggest_float(name, min_value, max_value)
-            elif group is int:
+            elif group is Type.int:
                 arguments[name] = trial.suggest_int(name, min_value, max_value)
         model = self.estimator(**arguments)
         return self.metric(model, self.dataset)
@@ -79,9 +88,9 @@ class HyperoptSearcher(Searcher):
         for params in hyperparams:
             name, group, min_value, max_value = astuple(params)
             self.groups[name] = group
-            if group is float:
+            if group is Type.float:
                 arguments[name] = hyperopt.hp.uniform(name, min_value, max_value)
-            elif group is int:
+            elif group is Type.int:
                 arguments[name] = hyperopt.hp.quniform(name, min_value, max_value, q=1)
         
         trial = hyperopt.Trials()
@@ -97,7 +106,7 @@ class HyperoptSearcher(Searcher):
         return -self.metric(model, self.dataset)
     
     def __float_to_int(self, arguments):
-        return {name: int(value) if (self.groups[name] is int) else value for name, value in arguments.items()}
+        return {name: int(value) if (self.groups[name] is Type.int) else value for name, value in arguments.items()}
 
 
 class iOptSearcher(Searcher):
@@ -131,7 +140,7 @@ class iOptSearcher(Searcher):
         def __get_argument_dict(self, point):
             arguments = {}
             for name, group, value in zip(self.floatVariableNames, self.variable_type, point.floatVariables):
-                arguments[name] = int(value) if group is int else value
+                arguments[name] = int(value) if group is Type.int else value
             return arguments
 
     def tune(self,
