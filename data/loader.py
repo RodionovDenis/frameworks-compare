@@ -8,7 +8,6 @@ from urllib.parse import urlencode
 from abc import ABC, abstractclassmethod
 from sklearn.preprocessing import LabelEncoder
 from pathlib import Path
-from collections import defaultdict
 from dataclasses import dataclass
 
 @dataclass
