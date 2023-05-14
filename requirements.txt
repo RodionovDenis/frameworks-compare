@@ -1,0 +1,9 @@
+# frameworks 
+optuna
+hyperopt
+iOpt
+
+# utils
+scikit-learn
+pandas
+numpy
