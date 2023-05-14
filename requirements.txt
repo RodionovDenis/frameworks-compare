@@ -7,3 +7,4 @@ iOpt
 scikit-learn
 pandas
 numpy
+requests
