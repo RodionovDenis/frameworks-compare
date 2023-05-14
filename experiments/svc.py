@@ -21,4 +21,4 @@ if __name__ == '__main__':
     
     experiment.set_framework_arguments(max_iter=5)
 
-    experiment.run(default_arguments=True, show_result=True, path_to_folder='svc')
+    experiment.run(default_arguments=True, show_result=True, path_to_folder='result/svc')

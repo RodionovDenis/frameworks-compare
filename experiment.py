@@ -76,4 +76,4 @@ class Experiment:
         path.mkdir(parents=True, exist_ok=True)
         with open(path / 'metainfo.json', 'w') as f:
             f.write(json.dumps(metainfo, indent=4))
-        frame.to_csv(path / 'scores.svc')
+        frame.to_csv(path / 'scores.csv')
