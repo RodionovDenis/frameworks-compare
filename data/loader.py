@@ -119,10 +119,10 @@ if __name__ == '__main__':
     download_url = response.json()['href']
 
     download_response = requests.get(download_url)
-    with open('datasets.zip', 'wb') as f:
+    with open('data/datasets.zip', 'wb') as f:
         f.write(download_response.content)
 
-    with zipfile.ZipFile('datasets.zip') as f:
-        f.extractall()
+    with zipfile.ZipFile('data/datasets.zip') as f:
+        f.extractall(path='data')
 
-    os.remove('datasets.zip')
+    os.remove('data/datasets.zip')
