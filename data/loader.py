@@ -7,6 +7,7 @@ import numpy.typing as npt
 from urllib.parse import urlencode
 from abc import ABC, abstractclassmethod
 from sklearn.preprocessing import LabelEncoder
+from sklearn.datasets import load_breast_cancer, load_digits
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -32,14 +33,19 @@ class UCIParser(Parser):
         self.spliter = spliter
         self.skips = skips
 
-    def load_uci(self):
+    def load_uci(self, sample_skip=None):
         with open(self.path) as f:
             data = []
+            sample = -1
             while (row := f.readline()).strip():
+                sample += 1
+                if (sample_skip is not None) and (sample == sample_skip):
+                    continue
                 input_ = [x.strip() for x in row.split(self.spliter)]
                 if self.skips in input_:
                     continue
                 data.append(input_)
+                sample += 1
         return data
     
     def preprocess_features(self, features, skip=None):
@@ -68,11 +74,23 @@ class UCIParser(Parser):
             targets.append(sample[index_target])
         return features, targets
     
-    def parse_text_file(self, index_target, feature_skip=None):
-        data = self.load_uci()
+    def parse_text_file(self, index_target, sample_skip=None, feature_skip=None):
+        data = self.load_uci(sample_skip)
         features, targets = self.separate_target(data, index_target)
         return self.preprocess_features(features, skip=feature_skip), \
                self.preprocess_target(targets)
+    
+
+class BreastCancer:
+    def load_dataset(self) -> Dataset:
+        x, y = load_breast_cancer(return_X_y=True)
+        return Dataset('Breast Cancer', x, y ^ 1)
+    
+
+class Digits:
+    def load_dataset(self) -> Dataset:
+        x, y = load_digits(return_X_y=True)
+        return Dataset('Digits', x, y)
     
 
 class Adult(UCIParser):
@@ -80,8 +98,17 @@ class Adult(UCIParser):
         super().__init__('adult/adult.data', spliter=',')
     
     def load_dataset(self) -> Dataset:
-        features, targets = self.parse_text_file(-1)
+        features, targets = self.parse_text_file(index_target=-1)
         return Dataset('Adult', features, targets)
+
+
+class BankMarketing(UCIParser):
+    def __init__(self):
+        super().__init__('bank-marketing/bank.data', spliter=';')
+    
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=-1, sample_skip=0)
+        return Dataset('Bank-marketing', features, targets)
 
 
 class CNAE9(UCIParser):
@@ -89,17 +116,8 @@ class CNAE9(UCIParser):
         super().__init__('cnae-9/CNAE-9.data', spliter=',')
     
     def load_dataset(self) -> Dataset:
-        features, targets = self.parse_text_file(0)
+        features, targets = self.parse_text_file(index_target=0)
         return Dataset('CNAE-9', features, targets)
-    
-
-class BreastCancer(UCIParser):
-    def __init__(self):
-        super().__init__('breast cancer/breast-cancer-wisconsin.data', spliter=',')
-    
-    def load_dataset(self) -> Dataset:
-        features, targets = self.parse_text_file(-1, feature_skip=0)
-        return Dataset('Breast Cancer', features, targets)
 
 
 def get_datasets(*args) -> list[Dataset]:
