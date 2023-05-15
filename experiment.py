@@ -4,11 +4,11 @@ import json
 from frameworks import Searcher, Hyperparameter, dict_factory
 from data.loader import Parser, get_datasets
 from metrics import Metric
+from multiprocessing import Pool
 
 from pathlib import Path
 from tqdm import tqdm
 from itertools import product
-from functools import partial
 from dataclasses import asdict
 
 class Experiment:
@@ -28,10 +28,10 @@ class Experiment:
     
     def set_framework_arguments(self, **kwargs):
         assert 'max_iter' in kwargs, 'max_iter parameter must have'
-        self.seacher_instances = [searcher(**kwargs) for searcher in self.searcher_classes]
         self.max_iter = kwargs['max_iter']
+        self.seacher_instances = [searcher(**kwargs) for searcher in self.searcher_classes]
 
-    def run(self, default_arguments=False, show_result=False, path_to_folder=None):
+    def run(self, default_arguments=False, show_result=False, path_to_folder=None, n_jobs=1):
 
         assert 'seacher_instances' in self.__dict__, \
             'First you need to set the parameters using the set_framework_arguments method'
@@ -39,19 +39,16 @@ class Experiment:
         columns = [self.default_arguments] * default_arguments + [x.name for x in self.seacher_instances]
         frame = pd.DataFrame(index=[x.name for x in self.datasets], columns=columns)
 
-        total = len(self.seacher_instances) * len(self.datasets) * self.max_iter \
-            + default_arguments * len(self.datasets)
+        len_searchers, len_dataset = len(columns), len(self.datasets)
 
-        with tqdm(total=total) as progress_bar:
+        products = list(product(range(len_searchers), range(len_dataset)))
 
-            metric = partial(self.metric, progress_bar=progress_bar)
-
-            for searcher, dataset in product(self.seacher_instances, self.datasets):
-                arguments = self.estimator, self.hyperparams, dataset, metric
-                frame[searcher.name][dataset.name] = searcher.tune(*arguments)
-            
-            if default_arguments:
-                self.__calculate_default_arguments(frame, metric)
+        with Pool(n_jobs) as pool:
+            results = list(tqdm(pool.imap(self.objective, products), total=len(products)))
+            for (i, j), value in zip(products, results):
+                column = self.seacher_instances[i].name if i < len(self.seacher_instances) else self.default_arguments
+                row = self.datasets[j].name
+                frame[column][row] = value
 
         if show_result:
             print(frame)
@@ -61,9 +58,15 @@ class Experiment:
 
         return frame
     
-    def __calculate_default_arguments(self, frame, metric: Metric):
-        for dataset in self.datasets:
-            frame[self.default_arguments][dataset.name] = metric(self.estimator(), dataset)
+    def objective(self, args):
+        dataset = self.datasets[args[1]]
+        if args[0] == len(self.searcher_classes):
+            return self.__default_arguments(dataset)
+        searcher = self.seacher_instances[args[0]]
+        return searcher.tune(self.estimator, self.hyperparams, dataset, self.metric)
+    
+    def __default_arguments(self, dataset):
+        return self.metric(self.estimator(), dataset)
 
     def __save(self, frame, path_to_folder: str):
         metainfo = {
