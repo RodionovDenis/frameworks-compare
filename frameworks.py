@@ -8,7 +8,6 @@ from iOpt.solver_parametrs import SolverParameters
 
 from abc import ABC, abstractclassmethod
 from dataclasses import dataclass, astuple, asdict
-from enum import Enum
 from functools import partial
 
 from metrics import Metric
@@ -30,7 +29,6 @@ class Type:
     @staticmethod
     def float(min_value, max_value, log=False):
         return Type.Number(float, min_value, max_value, log)
-    
 
 
 @dataclass
@@ -41,10 +39,13 @@ class Hyperparameter:
 
 def dict_factory(data):
     result = {}
-    for k, v in data:
-        if isinstance(k, Type.Number):
-            result.update(asdict(v))
-        result[k] = v
+    for name, value in data:
+        if isinstance(value, dict):
+            result.update(value)
+        elif isinstance(value, type):
+            result[name] = value.__name__
+        else:
+            result[name] = value
     return result
 
 
