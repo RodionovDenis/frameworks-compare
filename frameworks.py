@@ -1,33 +1,51 @@
 import optuna
 import hyperopt
+import numpy as np
 
 from iOpt.problem import Problem
 from iOpt.solver import Solver
 from iOpt.solver_parametrs import SolverParameters
 
 from abc import ABC, abstractclassmethod
-from dataclasses import dataclass, astuple
+from dataclasses import dataclass, astuple, asdict
 from enum import Enum
+from functools import partial
 
 from metrics import Metric
 from data.loader import Dataset
 
 
-class Type(Enum):
-    int = 0
-    float = 1
+class Type:
+    @dataclass
+    class Number:
+        type: type
+        min_value: float
+        max_value: float
+        log: bool
+    
+    @staticmethod
+    def int(min_value, max_value, log=False):
+        return Type.Number(int, min_value, max_value, log)
+    
+    @staticmethod
+    def float(min_value, max_value, log=False):
+        return Type.Number(float, min_value, max_value, log)
+    
 
 
 @dataclass
 class Hyperparameter:
     name: str
-    group: Type
-    min_value: float
-    max_value: float
+    group: Type.Number
 
 
 def dict_factory(data):
-    return {k: v.name if isinstance(v, Type) else v for k, v in data}
+    result = {}
+    for k, v in data:
+        if isinstance(k, Type.Number):
+            result.update(asdict(v))
+        result[k] = v
+    return result
 
 
 class Searcher(ABC):
@@ -62,15 +80,21 @@ class OptunaSearcher(Searcher):
         return study.best_value
 
     def __objective(self, trial: optuna.Trial):
-        arguments = {}
-        for params in self.hyperparams:
-            name, group, min_value, max_value = astuple(params)
-            if group is Type.float:
-                arguments[name] = trial.suggest_float(name, min_value, max_value)
-            elif group is Type.int:
-                arguments[name] = trial.suggest_int(name, min_value, max_value)
+        arguments = self.__get_point(trial)
         model = self.estimator(**arguments)
         return self.metric(model, self.dataset)
+    
+    def __get_point(self, trial: optuna.Trial):
+        arguments = {}
+        functions = {
+            int: trial.suggest_int,
+            float: trial.suggest_float
+        }
+        for params in self.hyperparams:
+            name, (type, min_value, max_value, log) = astuple(params)
+            value = functions[type](name, min_value, max_value, log=log)
+            arguments[name] = value
+        return arguments
 
 
 class HyperoptSearcher(Searcher):
@@ -83,16 +107,7 @@ class HyperoptSearcher(Searcher):
              hyperparams: list[Hyperparameter],
              dataset: Dataset,
              metric: Metric):
-
-        arguments, self.groups = {}, {}
-        for params in hyperparams:
-            name, group, min_value, max_value = astuple(params)
-            self.groups[name] = group
-            if group is Type.float:
-                arguments[name] = hyperopt.hp.uniform(name, min_value, max_value)
-            elif group is Type.int:
-                arguments[name] = hyperopt.hp.quniform(name, min_value, max_value, q=1)
-        
+        arguments = self.__get_space(hyperparams)
         trial = hyperopt.Trials()
         self.estimator, self.dataset, self.metric = \
             estimator, dataset, metric
@@ -105,8 +120,26 @@ class HyperoptSearcher(Searcher):
         model = self.estimator(**arguments)
         return -self.metric(model, self.dataset)
     
+    def __get_space(self, hyperparams):
+        arguments, self.groups = {}, {}
+        functions = {
+            float: [hyperopt.hp.uniform, 
+                    hyperopt.hp.loguniform],
+            int: [partial(hyperopt.hp.quniform, q=1),
+                  partial(hyperopt.hp.qloguniform, q=1)]
+        }
+        for params in hyperparams:
+            name, (type, min_value, max_value, log) = astuple(params)
+            self.groups[name] = type
+            arguments[name] = functions[type][log](name,
+                                                   np.log(min_value) if log else min_value,
+                                                   np.log(max_value) if log else max_value)
+            
+        return arguments
+            
+    
     def __float_to_int(self, arguments):
-        return {name: int(value) if (self.groups[name] is Type.int) else value for name, value in arguments.items()}
+        return {name: int(value) if (self.groups[name] is int) else value for name, value in arguments.items()}
 
 
 class iOptSearcher(Searcher):
@@ -124,12 +157,16 @@ class iOptSearcher(Searcher):
             self.numberOfObjectives = 1
             
             self.variable_type = []
+            self.is_log_variable = []
             for param in hyperparams:
-                name, group, min_value, max_value = astuple(param)
-                self.variable_type.append(group)
+                name, (type, min_value, max_value, log) = astuple(param)
+
+                self.variable_type.append(type)
                 self.floatVariableNames.append(name)
-                self.lowerBoundOfFloatVariables.append(min_value)
-                self.upperBoundOfFloatVariables.append(max_value)
+                self.lowerBoundOfFloatVariables.append(np.log(min_value) if log else min_value)
+                self.upperBoundOfFloatVariables.append(np.log(max_value) if log else max_value)
+                self.is_log_variable.append(log)
+                
 
         def Calculate(self, point, functionValue):
             arguments = self.__get_argument_dict(point)
@@ -139,8 +176,11 @@ class iOptSearcher(Searcher):
 
         def __get_argument_dict(self, point):
             arguments = {}
-            for name, group, value in zip(self.floatVariableNames, self.variable_type, point.floatVariables):
-                arguments[name] = int(value) if group is Type.int else value
+            for name, type, value, log in zip(self.floatVariableNames, self.variable_type, point.floatVariables,
+                                              self.is_log_variable):
+                value = np.exp(value) if log else value
+                value = int(value) if type is int else value
+                arguments[name] = value
             return arguments
 
     def tune(self,
