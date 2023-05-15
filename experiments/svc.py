@@ -1,4 +1,5 @@
-from data.loader import CNAE9, BreastCancer
+import data.loader as loader 
+
 from frameworks import Type, Hyperparameter, OptunaSearcher, HyperoptSearcher, iOptSearcher
 from metrics import CrossValidation
 from experiment import Experiment
@@ -15,11 +16,11 @@ if __name__ == '__main__':
     ]
 
     seachers = [OptunaSearcher, HyperoptSearcher, iOptSearcher]
-    parsers = [CNAE9, BreastCancer]
+    parsers = [loader.BreastCancer, loader.Digits, loader.CNAE9, loader.StatlogSegmentation]
 
     experiment = Experiment(SVC, hyperparams, seachers, parsers,
                             CrossValidation(f1_score, average='weighted'))
     
     experiment.set_framework_arguments(max_iter=10)
 
-    experiment.run(default_arguments=True, show_result=True, n_jobs=8, path_to_folder='result/svc')
+    experiment.run(default_arguments=True, show_result=True, n_jobs=16, path_to_folder='result/svc')
