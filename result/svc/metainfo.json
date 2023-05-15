@@ -1,0 +1,21 @@
+{
+    "estimator": "SVC",
+    "max_iter": 100,
+    "hyperparameters": [
+        {
+            "name": "gamma",
+            "type": "float",
+            "min_value": 0.001,
+            "max_value": 0.1,
+            "log": true
+        },
+        {
+            "name": "C",
+            "type": "int",
+            "min_value": 1,
+            "max_value": 1000000.0,
+            "log": true
+        }
+    ],
+    "metric": "Cross Validation, scoring f1_score with weighted average"
+}
