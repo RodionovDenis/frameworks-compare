@@ -45,7 +45,6 @@ class UCIParser(Parser):
                 if self.skips in input_:
                     continue
                 data.append(input_)
-                sample += 1
         return data
     
     def preprocess_features(self, features, skip=None):
@@ -118,6 +117,42 @@ class CNAE9(UCIParser):
     def load_dataset(self) -> Dataset:
         features, targets = self.parse_text_file(index_target=0)
         return Dataset('CNAE-9', features, targets)
+
+
+class StatlogSegmentation(UCIParser):
+    def __init__(self):
+        super().__init__('statlog-segmentation/segment.dat', spliter=None)
+
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=-1)
+        return Dataset('Statlog Segmentation', features, targets)
+
+
+class DryBean(UCIParser):
+    def __init__(self):
+        super().__init__('dry-bean/Dry_Bean_Dataset.csv', spliter=',')
+
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(sample_skip=0,  index_target=-1)
+        return Dataset('Dry Bean', features, targets)
+    
+
+class MagicGammaTelescope(UCIParser):
+    def __init__(self):
+        super().__init__('magic-gamma-telescope/magic04.data', spliter=',')
+
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=-1)
+        return Dataset('Magic Gamma Telescope', features, targets)
+    
+
+class Mushroom(UCIParser):
+    def __init__(self):
+        super().__init__('mushroom/agaricus-lepiota.data', spliter=',')
+
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=0)
+        return Dataset('Mushroom', features, targets)
 
 
 def get_datasets(*args) -> list[Dataset]:
