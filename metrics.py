@@ -6,7 +6,7 @@ from data.loader import Dataset
 
 class Metric(ABC):
     @abstractclassmethod
-    def __call__(self, estimator, dataset: Dataset, progress_bar=None):
+    def __call__(self, estimator, dataset: Dataset):
         pass
 
 
@@ -17,10 +17,7 @@ class CrossValidation(Metric):
     
     def __call__(self, *args, progress_bar=None):
         estimator, dataset = args
-        value = cross_val_score(estimator, dataset.features, dataset.targets, scoring=self.get_score).mean()
-        if progress_bar is not None:
-            progress_bar.update(1)
-        return value
+        return cross_val_score(estimator, dataset.features, dataset.targets, scoring=self.get_score).mean()
     
     def get_score(self, *args):
         estimator, features, targets = args
