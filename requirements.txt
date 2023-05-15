@@ -3,8 +3,12 @@ optuna
 hyperopt
 iOpt
 
-# utils
+# estimators
 scikit-learn
+xgboost
+catboost
+
+# utils
 pandas
 numpy
 requests
