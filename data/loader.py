@@ -164,6 +164,9 @@ def get_datasets(*args) -> list[Dataset]:
 
 
 if __name__ == '__main__':
+    
+    path = Path(__file__).parent
+    
     base_url = 'https://cloud-api.yandex.net/v1/disk/public/resources/download?'
     public_key = 'https://disk.yandex.ru/d/1RHWkpKcmMWWcg'
 
@@ -172,10 +175,10 @@ if __name__ == '__main__':
     download_url = response.json()['href']
 
     download_response = requests.get(download_url)
-    with open('data/datasets.zip', 'wb') as f:
+    with open(path / 'datasets.zip', 'wb') as f:
         f.write(download_response.content)
 
-    with zipfile.ZipFile('data/datasets.zip') as f:
-        f.extractall(path='data')
+    with zipfile.ZipFile(path / 'datasets.zip') as f:
+        f.extractall(path=path)
 
-    os.remove('data/datasets.zip')
+    os.remove(path / 'datasets.zip')
