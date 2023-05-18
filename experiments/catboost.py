@@ -19,13 +19,14 @@ if __name__ == '__main__':
     ]
 
     seachers = [OptunaSearcher, HyperoptSearcher, iOptSearcher]
-    parsers = [loader.BreastCancer, loader.Digits, loader.CNAE9, loader.StatlogSegmentation]
+
+    parsers = [loader.BreastCancer, loader.Digits, loader.CNAE9, loader.StatlogSegmentation, loader.Adult,
+               loader.BankMarketing, loader.DryBean, loader.MagicGammaTelescope, loader.Mushroom]
     
     catboost_classifier = partial(CatBoostClassifier, logging_level='Silent', allow_writing_files=False)
 
     experiment = Experiment(catboost_classifier, hyperparams, seachers, parsers,
                             CrossValidation(f1_score, average='weighted'))
-    
-    experiment.set_framework_arguments(max_iter=100)
 
-    experiment.run(default_arguments=True, show_result=True, n_jobs=16, path_to_folder='result/catboost')
+    experiment.run(100,
+                   default_arguments=True, show_result=True)

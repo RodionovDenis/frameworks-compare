@@ -17,11 +17,12 @@ if __name__ == '__main__':
     ]
 
     seachers = [OptunaSearcher, HyperoptSearcher, iOptSearcher]
-    parsers = [loader.BreastCancer, loader.Digits, loader.CNAE9, loader.StatlogSegmentation]
+
+    parsers = [loader.BreastCancer, loader.Digits, loader.CNAE9, loader.StatlogSegmentation, loader.Adult,
+               loader.BankMarketing, loader.DryBean, loader.MagicGammaTelescope, loader.Mushroom]
 
     experiment = Experiment(RandomForestClassifier, hyperparams, seachers, parsers,
-                            CrossValidation(f1_score, average='weighted'))
-    
-    experiment.set_framework_arguments(max_iter=100)
-
-    experiment.run(default_arguments=True, show_result=True, n_jobs=16, path_to_folder='result/randomforest')
+                            CrossValidation(f1_score, average='weighted'),
+                            n_jobs=12)
+    experiment.run(100,
+                   default_arguments=True, show_result=True)
