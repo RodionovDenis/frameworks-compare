@@ -1,5 +1,9 @@
 from abc import ABC, abstractclassmethod
+
 from sklearn.model_selection import cross_val_score
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+
 from functools import partial
 from data.loader import Dataset
 
@@ -19,7 +23,13 @@ class CrossValidation(Metric):
     
     def __call__(self, *args):
         estimator, dataset = args
-        return cross_val_score(estimator, dataset.features, dataset.targets, scoring=self.get_score).mean()
+
+        pipeline = Pipeline([
+            ('scaler', StandardScaler()),
+            ('model', estimator)
+        ])
+        
+        return cross_val_score(pipeline, dataset.features, dataset.targets, scoring=self.get_score).mean()
     
     def get_score(self, *args):
         estimator, features, targets = args
