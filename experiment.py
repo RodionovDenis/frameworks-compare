@@ -15,72 +15,51 @@ from dataclasses import asdict
 class Experiment:
     def __init__(self, estimator,
                        hyperparams: list[Hyperparameter],
-                       searchers: list[Searcher],
-                       parsers: list[Parser],
-                       metric: Metric,
-                       *,
-                       path_to_folder=None,
-                       n_jobs=1,
-                       ):
+                       frameworks: list[Searcher],
+                       datasets: list[Parser],
+                       metric: Metric):
 
         self.estimator = estimator
-        self.searchers = searchers
-        self.datasets = get_datasets(*parsers)
+        self.frameworks = {x.name: x for x in frameworks}
+        self.datasets = {x.name: x for x in datasets}
         self.hyperparams = hyperparams
         self.metric = metric
-
-        self.path_to_folder = path_to_folder
-        self.n_jobs = n_jobs
         
-        self.default_arguments = 'Default Arguments'
+        self.default = 'Default'
 
-    def run(self, max_iter, *, default_arguments=False, show_result=False):
-        
-        self.searcher_instances = self.__initialized_searchers(max_iter=max_iter)
+    def run(self, path_to_folder=None, default=False, show_result=False, n_jobs=1):
 
-        columns = [self.default_arguments] * default_arguments + [x.name for x in self.searcher_instances]
-        indexes = [x.name for x in self.datasets]
+        columns = [self.default] * default + list(self.frameworks)
+        indexes = list(self.datasets)
         frame = pd.DataFrame(index=indexes, columns=columns)
-        
-        len_searchers, len_dataset = len(columns), len(self.datasets)
-        products = list(product(range(len_searchers), range(len_dataset)))
 
-        with Pool(self.n_jobs) as pool:
-            results = list(tqdm(pool.imap(self.objective, products), total=len(products)))
-            for (i, j), value in zip(products, results):
-                if i < len(self.searcher_instances):
-                    column = self.searcher_instances[i].name 
-                else:
-                    column = self.default_arguments
+        products = list(product(columns, indexes))
 
-                row = self.datasets[j].name
+        with Pool(n_jobs) as pool:
+            result = tqdm(pool.imap_unordered(self.objective, products), total=len(products))
+            for (column, row), value in result:
                 frame[column][row] = value
 
         if show_result:
             print(frame)
         
-        if isinstance(self.path_to_folder, str):
-            self.__save(frame, self.path_to_folder)
+        if isinstance(path_to_folder, str):
+            self.__save(frame, path_to_folder)
 
         return frame
     
-    def __initialized_searchers(self, *args, **kwargs):
-        return [searcher(*args, **kwargs) for searcher in self.searchers]
-    
     def objective(self, args):
-        idx_searcher, idx_dataset = args
-        dataset = self.datasets[idx_dataset]
-
-        if idx_searcher == len(self.searchers):
-            return self.metric(self.estimator(), dataset)
-
-        searcher = self.searcher_instances[idx_searcher]
-        return searcher.tune(self.estimator, self.hyperparams, dataset, self.metric)
+        framework, dataset = self.frameworks.get(args[0]), self.datasets.get(args[1])
+        if args[0] == self.default:
+            value = self.metric(self.estimator(), dataset)
+        else:
+            value = framework.tune(self.estimator, self.hyperparams, dataset, self.metric)
+        return args, value
 
     def __save(self, frame, path_to_folder: str):
         metainfo = {
             'estimator': self.estimator.__name__,
-            'max_iter': self.max_iter,
+            'max_iter': next(iter(self.frameworks.values())).max_iter,
             'hyperparameters': [asdict(x, dict_factory=dict_factory) for x in  self.hyperparams],
             'metric': self.metric.name
         }

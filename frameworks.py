@@ -195,3 +195,10 @@ class iOptSearcher(Searcher):
         solver = Solver(problem, parameters=framework_params)
         solver_info = solver.Solve()
         return -solver_info.bestTrials[0].functionValues[-1].value
+    
+
+def get_frameworks(*args, max_iter):
+    frameworks = []
+    for framework in args:
+        frameworks.append(framework(max_iter))
+    return frameworks

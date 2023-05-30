@@ -64,13 +64,19 @@ class UCIParser(Parser):
         return LabelEncoder().fit_transform(targets)
     
     @staticmethod
-    def separate_target(data, index_target):
+    def separate_target(data, index_target: int | list[int]):
+        if isinstance(index_target, int):
+            index_target = [index_target]
+        for i, x in enumerate(index_target):
+            index_target[i] = len(data[0]) + x if x < 0 else x
         features, targets = [], []
-        if index_target < 0:
-            index_target = len(data[0]) + index_target
         for sample in data:
-            features.append([x for i, x in enumerate(sample) if i != index_target])
-            targets.append(sample[index_target])
+            features.append([x for i, x in enumerate(sample) if i not in index_target])
+            target = [sample[i] for i in index_target]
+            if len(target) == 1:
+                targets.append(target[0])
+            else:
+                targets.append(target.index('1'))
         return features, targets
     
     def parse_text_file(self, index_target, sample_skip=None, feature_skip=None):
@@ -153,6 +159,16 @@ class Mushroom(UCIParser):
     def load_dataset(self) -> Dataset:
         features, targets = self.parse_text_file(index_target=0)
         return Dataset('Mushroom', features, targets)
+    
+
+class Semeion(UCIParser):
+    def __init__(self):
+        super().__init__('semeion/semeion.data', spliter=None)
+    
+    def load_dataset(self) -> Dataset:
+        indexes = np.arange(-10, 0).tolist()
+        features, targets = self.parse_text_file(index_target=indexes)
+        return Dataset('Semeion', features, targets)
 
 
 def get_datasets(*args) -> list[Dataset]:
