@@ -16,10 +16,11 @@ class Metric(ABC):
 
 class CrossValidation(Metric):
     def __init__(self, scoring, **kwargs):
-        assert 'average' in kwargs
         self.scoring = partial(scoring, **kwargs)
-        average = kwargs['average']
-        self.name = f'Cross Validation, scoring {scoring.__name__} with {average} average'
+        self.name = f'Cross Validation, scoring {scoring.__name__}'
+        params = ', '.join([f'{name} {value}' for name, value in kwargs.items()])
+        if params:
+            self.name += f' with {params}'
     
     def __call__(self, *args):
         estimator, dataset = args

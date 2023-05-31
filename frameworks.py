@@ -7,7 +7,7 @@ from iOpt.solver import Solver
 from iOpt.solver_parametrs import SolverParameters
 
 from abc import ABC, abstractclassmethod
-from dataclasses import dataclass, astuple, asdict
+from dataclasses import dataclass, astuple
 from functools import partial
 
 from metrics import Metric
@@ -22,31 +22,27 @@ class Type:
         max_value: float
         log: bool
     
+    @dataclass
+    class Categorial:
+        values: list[str]
+
     @staticmethod
     def int(min_value, max_value, log=False):
         return Type.Number(int, min_value, max_value, log)
-    
+
     @staticmethod
     def float(min_value, max_value, log=False):
         return Type.Number(float, min_value, max_value, log)
+
+    @staticmethod
+    def choice(*args: str):
+        return Type.Categorial([x for x in args])
 
 
 @dataclass
 class Hyperparameter:
     name: str
-    group: Type.Number
-
-
-def dict_factory(data):
-    result = {}
-    for name, value in data:
-        if isinstance(value, dict):
-            result.update(value)
-        elif isinstance(value, type):
-            result[name] = value.__name__
-        else:
-            result[name] = value
-    return result
+    group: Type.Number | Type.Categorial
 
 
 class Searcher(ABC):
@@ -81,21 +77,22 @@ class OptunaSearcher(Searcher):
         return study.best_value
 
     def __objective(self, trial: optuna.Trial):
-        arguments = self.__get_point(trial)
+        arguments = {param.name: self.get_value(param, trial) for param in self.hyperparams}
         model = self.estimator(**arguments)
         return self.metric(model, self.dataset)
     
-    def __get_point(self, trial: optuna.Trial):
-        arguments = {}
+    @staticmethod
+    def get_value(param: Hyperparameter, trial: optuna.Trial):
+        name = param.name
         functions = {
             int: trial.suggest_int,
             float: trial.suggest_float
         }
-        for params in self.hyperparams:
-            name, (type, min_value, max_value, log) = astuple(params)
-            value = functions[type](name, min_value, max_value, log=log)
-            arguments[name] = value
-        return arguments
+        if isinstance(param.group, Type.Number):
+            type, min_v, max_v, log = astuple(param.group)
+            return functions[type](name, min_v, max_v, log=log)
+        elif isinstance(param.group, Type.Categorial):
+            return trial.suggest_categorical(name, param.group.values)
 
 
 class HyperoptSearcher(Searcher):
@@ -108,39 +105,40 @@ class HyperoptSearcher(Searcher):
              hyperparams: list[Hyperparameter],
              dataset: Dataset,
              metric: Metric):
-        arguments = self.__get_space(hyperparams)
-        trial = hyperopt.Trials()
+
         self.estimator, self.dataset, self.metric = \
             estimator, dataset, metric
+
+        arguments = self.__get_space(hyperparams)
+        trial = hyperopt.Trials()
+
         hyperopt.fmin(self.__objective, arguments, hyperopt.tpe.suggest, max_evals=self.max_iter,
                       trials=trial, verbose=False)
         return -trial.best_trial['result']['loss']
 
     def __objective(self, arguments):
-        arguments = self.__float_to_int(arguments)
         model = self.estimator(**arguments)
         return -self.metric(model, self.dataset)
     
-    def __get_space(self, hyperparams):
-        arguments, self.groups = {}, {}
+    def __get_space(self, hyperparams: list[Hyperparameter]):
+        arguments = {}
         functions = {
             float: [hyperopt.hp.uniform, 
                     hyperopt.hp.loguniform],
             int: [partial(hyperopt.hp.quniform, q=1),
                   partial(hyperopt.hp.qloguniform, q=1)]
         }
-        for params in hyperparams:
-            name, (type, min_value, max_value, log) = astuple(params)
-            self.groups[name] = type
-            arguments[name] = functions[type][log](name,
-                                                   np.log(min_value) if log else min_value,
-                                                   np.log(max_value) if log else max_value)
-            
+        for param in hyperparams:
+            name = param.name
+            if isinstance(param.group, Type.Number):
+                type, min_v, max_v, log = astuple(param.group)
+                value = functions[type][log](name, np.log(min_v) if log else min_v,
+                                                             np.log(max_v) if log else max_v)
+                arguments[name] = value if type is float else int(value)
+            elif isinstance(param.group, Type.Categorial):
+                arguments[name] = hyperopt.hp.choice(name, param.group.values)
+
         return arguments
-            
-    
-    def __float_to_int(self, arguments):
-        return {name: int(value) if (self.groups[name] is int) else value for name, value in arguments.items()}
 
 
 class iOptSearcher(Searcher):
@@ -151,25 +149,34 @@ class iOptSearcher(Searcher):
     class __Estimator(Problem):
         def __init__(self, *args, **kwargs):
             super().__init__()
-            self.estimator, hyperparams, self.dataset, self.metric = args
+            self.estimator, float_hyperparams, discrete_hyperparams, self.dataset, self.metric = args
 
-            self.numberOfFloatVariables = len(hyperparams)
-            self.dimension = len(hyperparams)
+            self.numberOfFloatVariables = len(float_hyperparams)
+            self.numberOfDisreteVariables = len(discrete_hyperparams)
+            self.dimension = len(float_hyperparams) + len(discrete_hyperparams)
             self.numberOfObjectives = 1
             
-            self.variable_type = []
-            self.is_log_variable = []
-            for param in hyperparams:
-                name, (type, min_value, max_value, log) = astuple(param)
-
-                self.variable_type.append(type)
-                self.floatVariableNames.append(name)
-                self.lowerBoundOfFloatVariables.append(np.log(min_value) if log else min_value)
-                self.upperBoundOfFloatVariables.append(np.log(max_value) if log else max_value)
-                self.is_log_variable.append(log)
+            self.float_variables_types, self.is_log_float = [], []
+            for param in float_hyperparams:
+                self.floatVariableNames.append(param.name)
+                type, min_v, max_v, log = astuple(param.group)
+                self.float_variables_types.append(type)
+                self.lowerBoundOfFloatVariables.append(np.log(min_v) if log else min_v)
+                self.upperBoundOfFloatVariables.append(np.log(max_v) if log else max_v)
+                self.is_log_float.append(log)
                 
+            for param in discrete_hyperparams:
+                self.discreteVariableNames.append(param.name)
+                if isinstance(param.group, Type.Number):
+                    type, min_v, max_v, log = astuple(param.group)
+                    assert type is int, 'Type must be int'
+                    assert not log, 'Log must be off'
+                    self.discreteVariableValues.append([str(x) for x in range(min_v, max_v + 1)])
+                elif isinstance(param.group, Type.Categorial):
+                    self.discreteVariableValues.append(param.group.values)
 
         def Calculate(self, point, functionValue):
+            print(point.discreteVariables)
             arguments = self.__get_argument_dict(point)
             model = self.estimator(**arguments)
             functionValue.value = -self.metric(model, self.dataset)
@@ -177,11 +184,14 @@ class iOptSearcher(Searcher):
 
         def __get_argument_dict(self, point):
             arguments = {}
-            for name, type, value, log in zip(self.floatVariableNames, self.variable_type, point.floatVariables,
-                                              self.is_log_variable):
+            for name, type, value, log in zip(self.floatVariableNames, self.float_variables_types, point.floatVariables,
+                                              self.is_log_float):
                 value = np.exp(value) if log else value
                 value = int(value) if type is int else value
                 arguments[name] = value
+            for name, value in zip(self.discreteVariableNames, point.discreteVariables):
+                arguments[name] = int(value) if value.isnumeric() else value
+
             return arguments
 
     def tune(self,
@@ -190,11 +200,29 @@ class iOptSearcher(Searcher):
              dataset: Dataset,
              metric: Metric):
         
-        problem = self.__Estimator(estimator, hyperparams, dataset, metric)
+        floats, discretes = self.split_hyperparams(hyperparams)
+        problem = self.__Estimator(estimator, floats, discretes, dataset, metric)
         framework_params = SolverParameters(itersLimit=self.max_iter)
         solver = Solver(problem, parameters=framework_params)
         solver_info = solver.Solve()
         return -solver_info.bestTrials[0].functionValues[-1].value
+    
+    @staticmethod
+    def split_hyperparams(hyperparams: list[Hyperparameter]):
+        floats, discretes = [], []
+        for x in hyperparams:
+            if iOptSearcher.is_discrete_hyperparam(x):
+                discretes.append(x)
+            else:
+                floats.append(x)
+        return floats, discretes
+            
+    @staticmethod
+    def is_discrete_hyperparam(x: Hyperparameter):
+        if isinstance(x.group, Type.Categorial):
+            return True
+        type, min_v, max_v, log = astuple(x.group)
+        return (type is int) and (not log) and (max_v - min_v + 1 <= 100)
     
 
 def get_frameworks(*args, max_iter):

@@ -1,7 +1,7 @@
 import pandas as pd
 import json
 
-from frameworks import Searcher, Hyperparameter, dict_factory
+from frameworks import Searcher, Hyperparameter
 from data.loader import Parser, get_datasets
 from metrics import Metric
 from multiprocessing import Pool
@@ -68,3 +68,14 @@ class Experiment:
         with open(path / 'metainfo.json', 'w') as f:
             f.write(json.dumps(metainfo, indent=4))
         frame.to_csv(path / 'scores.csv')
+
+def dict_factory(data):
+    result = {}
+    for name, value in data:
+        if isinstance(value, dict):
+            result.update(value)
+        elif isinstance(value, type):
+            result[name] = value.__name__
+        else:
+            result[name] = value
+    return result
