@@ -176,7 +176,6 @@ class iOptSearcher(Searcher):
                     self.discreteVariableValues.append(param.group.values)      
 
         def Calculate(self, point, functionValue):
-            print(point.discreteVariables)
             arguments = self.__get_argument_dict(point)
             model = self.estimator(**arguments)
             functionValue.value = -self.metric(model, self.dataset)
