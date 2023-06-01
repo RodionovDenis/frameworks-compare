@@ -152,7 +152,7 @@ class iOptSearcher(Searcher):
             self.estimator, float_hyperparams, discrete_hyperparams, self.dataset, self.metric = args
 
             self.numberOfFloatVariables = len(float_hyperparams)
-            self.numberOfDisreteVariables = len(discrete_hyperparams)
+            self.numberOfDiscreteVariables = len(discrete_hyperparams)
             self.dimension = len(float_hyperparams) + len(discrete_hyperparams)
             self.numberOfObjectives = 1
             
@@ -173,7 +173,7 @@ class iOptSearcher(Searcher):
                     assert not log, 'Log must be off'
                     self.discreteVariableValues.append([str(x) for x in range(min_v, max_v + 1)])
                 elif isinstance(param.group, Type.Categorial):
-                    self.discreteVariableValues.append(param.group.values)
+                    self.discreteVariableValues.append(param.group.values)      
 
         def Calculate(self, point, functionValue):
             print(point.discreteVariables)
