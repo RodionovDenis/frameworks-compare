@@ -35,4 +35,4 @@ python data/loader.py
 
 Запускаем эксперимент, проверяем, что всё работает (запускать с корневой папки репозитория):
 
-`python -m experiments.svc`
+`python experiments/svc.py`
