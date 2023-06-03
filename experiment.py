@@ -1,20 +1,19 @@
 import pandas as pd
-import json
+import mlflow
+import os
 
-from frameworks import Searcher, Hyperparameter
-from data.loader import Parser, get_datasets
+from hyperparameter import Hyperparameter
+from frameworks import Searcher
+
+from data.loader import Parser
 from metrics import Metric
 from multiprocessing import Pool
-
-from pathlib import Path
-from tqdm import tqdm
 from itertools import product
-from dataclasses import asdict
 
 
 class Experiment:
     def __init__(self, estimator,
-                       hyperparams: list[Hyperparameter],
+                       hyperparams: dict[str, Hyperparameter],
                        frameworks: list[Searcher],
                        datasets: list[Parser],
                        metric: Metric):
@@ -24,27 +23,38 @@ class Experiment:
         self.datasets = {x.name: x for x in datasets}
         self.hyperparams = hyperparams
         self.metric = metric
-        
         self.default = 'Default'
 
-    def run(self, path_to_folder=None, default=False, show_result=False, n_jobs=1):
+    def setup_mlflow(self, mlflow_uri):
+        mlflow.set_tracking_uri(mlflow_uri)
+        experiment_name = self.estimator.__name__
+        self.id = mlflow.set_experiment(experiment_name).experiment_id
 
-        columns = [self.default] * default + list(self.frameworks)
+    def log_params(self):
+        for name, param in self.hyperparams.items():
+            mlflow.log_param(name, str(param))
+        first = next(iter(self.frameworks.values()))
+        mlflow.log_param('max_iter', first.max_iter)
+        mlflow.log_param('metric', self.metric.name)
+
+    def run(self, n_jobs=1, mlflow_uri="http://127.0.0.1:5000"):
+
+        columns = [self.default] + list(self.frameworks)
         indexes = list(self.datasets)
         frame = pd.DataFrame(index=indexes, columns=columns)
 
         products = list(product(columns, indexes))
 
-        with Pool(n_jobs) as pool:
-            result = tqdm(pool.imap_unordered(self.objective, products), total=len(products))
+        self.setup_mlflow(mlflow_uri)
+        with mlflow.start_run(experiment_id=self.id, run_name='/'.join(indexes)):
+            self.log_params()
+            with Pool(n_jobs) as pool:
+                result = pool.map(self.objective, products)
             for (column, row), value in result:
                 frame[column][row] = value
-
-        if show_result:
-            print(frame)
-        
-        if isinstance(path_to_folder, str):
-            self.__save(frame, path_to_folder)
+            frame.to_csv('result.csv')
+            mlflow.log_artifact('result.csv', 'result.csv')
+            os.remove('result.csv')
 
         return frame
     
@@ -56,26 +66,7 @@ class Experiment:
             value = framework.tune(self.estimator, self.hyperparams, dataset, self.metric)
         return args, value
 
-    def __save(self, frame, path_to_folder: str):
-        metainfo = {
-            'estimator': self.estimator.__name__,
-            'max_iter': next(iter(self.frameworks.values())).max_iter,
-            'hyperparameters': [asdict(x, dict_factory=dict_factory) for x in  self.hyperparams],
-            'metric': self.metric.name
-        }
-        path = Path(path_to_folder)
-        path.mkdir(parents=True, exist_ok=True)
-        with open(path / 'metainfo.json', 'w') as f:
-            f.write(json.dumps(metainfo, indent=4))
-        frame.to_csv(path / 'scores.csv')
-
-def dict_factory(data):
-    result = {}
-    for name, value in data:
-        if isinstance(value, dict):
-            result.update(value)
-        elif isinstance(value, type):
-            result[name] = value.__name__
-        else:
-            result[name] = value
-    return result
+    def setup_mlflow(self, mlflow_uri):
+        mlflow.set_tracking_uri(mlflow_uri)
+        experiment_name = self.estimator.__name__.lower()
+        self.id = mlflow.set_experiment(experiment_name).experiment_id
