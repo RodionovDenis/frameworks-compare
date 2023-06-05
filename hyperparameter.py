@@ -12,7 +12,7 @@ class Numerical(Hyperparameter):
     type: Literal['float', 'int']
     min_value: float
     max_value: float
-    is_log_scale: bool
+    is_log_scale: bool = False
     
 
 @dataclass

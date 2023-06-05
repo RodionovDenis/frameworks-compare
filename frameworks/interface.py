@@ -5,7 +5,7 @@ from abc import ABC, abstractclassmethod
 
 from metrics import Metric
 from data.loader import Dataset
-from hyperparameter import Hyperparameter
+from hyperparameter import Hyperparameter, Categorial
 
 
 class Searcher(ABC):
@@ -28,8 +28,16 @@ class Searcher(ABC):
         model = self.estimator(**arguments)
         value = self.metric(model, self.dataset)
         self.current_step += 1
+        self.log_arguments(arguments, step=self.current_step)
         mlflow.log_metric(f'{self.name}/{self.dataset.name}', np.abs(value), step=self.current_step)
         return value
+    
+    def log_arguments(self, arguments, step):
+        for name, value in arguments.items():
+            x = self.hyperparams[name]
+            if isinstance(x, Categorial):
+                value = x.values.index(value)
+            mlflow.log_metric(f'{self.name}_{self.dataset.name}_{name}', value, step=step)
 
 
 def get_frameworks(*args, max_iter):
