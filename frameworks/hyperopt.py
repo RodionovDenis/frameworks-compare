@@ -47,4 +47,4 @@ class HyperoptSearcher(Searcher):
         for name, value in arguments.items():
             x = self.hyperparams[name]
             if isinstance(x, Numerical) and x.type == 'int':
-                arguments[name] = int(value)
+                arguments[name] = int(value + 0.5)

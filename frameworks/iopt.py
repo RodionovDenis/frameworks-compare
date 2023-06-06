@@ -50,7 +50,7 @@ class Estimator(Problem):
                                               point.floatVariables,
                                               self.is_log_float):
                 value = np.exp(value) if log else value
-                value = int(value) if type == 'int' else value
+                value = int(value + 0.5) if type == 'int' else value
                 arguments[name] = value
             if point.discreteVariables is not None:
                 for name, value in zip(self.discreteVariableNames, point.discreteVariables):
@@ -86,4 +86,4 @@ class iOptSearcher(Searcher):
         if isinstance(x, Categorial):
             return True
         type, min_v, max_v, log = astuple(x)
-        return (type == 'int') and (not log) and (max_v - min_v + 1 <= 100)
+        return (type == 'int') and (not log) and (max_v - min_v + 1 <= 5)
