@@ -1,6 +1,12 @@
 from abc import ABC, abstractclassmethod
+from typing import Literal
 
 from sklearn.model_selection import cross_val_score
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    roc_auc_score
+)
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -9,29 +15,46 @@ from data.loader import Dataset
 
 
 class Metric(ABC):
-    @abstractclassmethod
     def __call__(self, estimator, dataset: Dataset):
-        pass
-
-
-class CrossValidation(Metric):
-    def __init__(self, scoring, **kwargs):
-        self.scoring = partial(scoring, **kwargs)
-        self.name = f'Cross Validation, scoring {scoring.__name__}'
-        params = ', '.join([f'{name} {value}' for name, value in kwargs.items()])
-        if params:
-            self.name += f' with {params}'
-    
-    def __call__(self, *args):
-        estimator, dataset = args
 
         pipeline = Pipeline([
             ('scaler', StandardScaler()),
             ('model', estimator)
         ])
-        
-        return cross_val_score(pipeline, dataset.features, dataset.targets, scoring=self.get_score).mean()
+
+        return cross_val_score(pipeline, dataset.features, dataset.targets,
+                               scoring=self.get_score).mean()
+
+    @abstractclassmethod
+    def get_score(self, model, x, y):
+        pass
+
+
+class Accuracy(Metric):
+    def __init__(self):
+        self.name = 'accuracy'
+        self.scoring = accuracy_score()
+
+    def get_score(self, model, x, y):
+        return accuracy_score(y, model.predict(x))
+
+
+class F1(Metric):
+    def __init__(self, average: Literal['binary', 'macro', 'micro']):
+        self.average = average
+        self.name = f'f1-score ({self.average})'
     
-    def get_score(self, *args):
-        estimator, features, targets = args
-        return self.scoring(targets, estimator.predict(features))
+    def get_score(self, model, x, y):
+        return f1_score(y, model.predict(x), average=self.average)
+
+
+class RocAuc(Metric):
+    def __init__(self, average: Literal['binary', 'macro', 'micro']):
+        self.average = average
+        self.name = f'roc-auc ({self.average})'
+    
+    def get_score(self, model, x, y):
+        if self.average == 'binary':
+            return roc_auc_score(y, model.predict_proba(x)[:, 1])
+        else:
+            return roc_auc_score(y, model.predict_proba(x), average=self.average, multi_class='ovr')
