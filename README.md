@@ -1,5 +1,5 @@
 # frameworks-compare
-Compare frameworks for hyperparams tune
+[![python: 3.10](https://img.shields.io/badge/python-3.9-44cc12?style=flat-square&logo=python)](https://www.python.org/downloads/release/python-390/)
 
 ```
 git clone https://github.com/RodionovDenis/frameworks-compare.git
