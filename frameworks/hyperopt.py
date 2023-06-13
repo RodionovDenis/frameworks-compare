@@ -20,11 +20,13 @@ class HyperoptSearcher(Searcher):
 
         hyperopt.fmin(self.__objective, arguments, hyperopt.tpe.suggest, max_evals=self.max_iter,
                       trials=trial, verbose=False)
-        return -trial.best_trial['result']['loss']
+
+        return np.abs(trial.best_trial['result']['loss'])
 
     def __objective(self, arguments):
         self.__float_to_int(arguments)
-        return -self.calculate_metric_with_log(arguments)
+        value = self.calculate_metric_with_log(arguments)
+        return value if self.is_regression else -value
     
     def __get_space(self):
         arguments = {}

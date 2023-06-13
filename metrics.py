@@ -5,7 +5,8 @@ from sklearn.model_selection import cross_val_score
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
-    roc_auc_score
+    roc_auc_score,
+    mean_squared_error
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -33,7 +34,6 @@ class Metric(ABC):
 class Accuracy(Metric):
     def __init__(self):
         self.name = 'accuracy'
-        self.scoring = accuracy_score()
 
     def get_score(self, model, x, y):
         return accuracy_score(y, model.predict(x))
@@ -58,3 +58,11 @@ class RocAuc(Metric):
             return roc_auc_score(y, model.predict_proba(x)[:, 1])
         else:
             return roc_auc_score(y, model.predict_proba(x), average=self.average, multi_class='ovr')
+
+
+class MSE(Metric):
+    def __init__(self):
+        self.name = 'mse'
+        
+    def get_score(self, model, x, y):
+        return mean_squared_error(y, model.predict(x))

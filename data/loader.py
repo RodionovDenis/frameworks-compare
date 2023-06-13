@@ -5,6 +5,7 @@ import numpy as np
 import numpy.typing as npt
 
 from urllib.parse import urlencode
+from typing import Literal
 from abc import ABC, abstractclassmethod
 from sklearn.preprocessing import LabelEncoder
 from sklearn.datasets import load_breast_cancer, load_digits
@@ -16,6 +17,7 @@ class Dataset:
     name: str
     features: npt.NDArray
     targets: npt.NDArray
+    dataset_type: Literal['classification', 'regression'] = 'classification'
 
 
 class Parser(ABC):
@@ -28,10 +30,11 @@ class Parser(ABC):
 
 
 class UCIParser(Parser):
-    def __init__(self, path, *, spliter, skips='?'):
+    def __init__(self, path, *, spliter, skips='?', regression=False):
         super().__init__(f'uci-datasets/{path}')
         self.spliter = spliter
         self.skips = skips
+        self.regression = regression
 
     def load_uci(self, sample_skip=None):
         with open(self.path) as f:
@@ -61,6 +64,8 @@ class UCIParser(Parser):
             return LabelEncoder().fit_transform(feature).tolist()
 
     def preprocess_target(self, targets):
+        if self.regression:
+            return [float(value) for value in targets]
         return LabelEncoder().fit_transform(targets)
     
     @staticmethod
@@ -169,6 +174,15 @@ class Semeion(UCIParser):
         indexes = np.arange(-10, 0).tolist()
         features, targets = self.parse_text_file(index_target=indexes)
         return Dataset('Semeion', features, targets)
+    
+
+class WineQuality(UCIParser):
+    def __init__(self):
+        super().__init__('wine-quality/wine.csv', spliter=',', regression=True)
+        
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=-1, sample_skip=0, feature_skip=0)
+        return Dataset('Wine Quality', features, targets, 'regression')
 
 
 def get_datasets(*args) -> list[Dataset]:

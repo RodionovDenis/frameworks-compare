@@ -18,6 +18,7 @@ class Searcher(ABC):
                    dataset: Dataset,
                    metric: Metric):
         self.estimator, self.hyperparams, self.dataset, self.metric = estimator, hyperparams, dataset, metric
+        self.is_regression = self.dataset.dataset_type == 'regression'
         return self.find_best_value()
 
     @abstractclassmethod

@@ -15,6 +15,8 @@ class Estimator(Problem):
         super().__init__()
 
         self.estimator, float_hyperparams, discrete_hyperparams, self.dataset, self.metric = args
+        self.is_regression = kwargs['is_regression']
+
         self.numberOfFloatVariables = len(float_hyperparams)
         self.numberOfDiscreteVariables = len(discrete_hyperparams)
         self.dimension = len(float_hyperparams) + len(discrete_hyperparams)
@@ -41,7 +43,8 @@ class Estimator(Problem):
 
     def Calculate(self, point, functionValue):
             arguments = self.__get_argument_dict(point)
-            functionValue.value = -self.metric(arguments)
+            value = self.metric(arguments)
+            functionValue.value = value if self.is_regression else -value
             return functionValue
 
     def __get_argument_dict(self, point):
@@ -70,7 +73,7 @@ class iOptSearcher(Searcher):
         framework_params = SolverParameters(itersLimit=self.max_iter)
         solver = Solver(problem, parameters=framework_params)
         solver_info = solver.Solve()
-        return -solver_info.bestTrials[0].functionValues[-1].value
+        return np.abs(solver_info.bestTrials[0].functionValues[-1].value)
     
     def split_hyperparams(self):
         floats, discretes = {}, {}
