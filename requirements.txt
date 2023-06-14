@@ -12,3 +12,4 @@ catboost
 pandas
 numpy
 requests
+mlflow
