@@ -19,7 +19,7 @@ class OptunaSearcher(Searcher):
 
     def objective(self, trial: optuna.Trial):
         arguments = {name: self.get_value(name, param, trial) for name, param in self.hyperparams.items()}
-        return self.calculate_metric_with_log(arguments)
+        return self.calculate_metric(arguments)
     
     @staticmethod
     def get_value(name: str, param: Hyperparameter, trial: optuna.Trial):

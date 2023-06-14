@@ -18,19 +18,20 @@ class Searcher(ABC):
                    dataset: Dataset,
                    metric: Metric):
         self.estimator, self.hyperparams, self.dataset, self.metric = estimator, hyperparams, dataset, metric
-        self.is_regression = self.dataset.dataset_type == 'regression'
+        self.is_regression = self.dataset.type == 'regression'
         return self.find_best_value()
 
     @abstractclassmethod
     def find_best_value(self):
         pass
 
-    def calculate_metric_with_log(self, arguments):
+    def calculate_metric(self, arguments):
         model = self.estimator(**arguments)
         value = self.metric(model, self.dataset)
         self.current_step += 1
-        self.log_arguments(arguments, step=self.current_step)
-        mlflow.log_metric(f'{self.name}/{self.dataset.name}', np.abs(value), step=self.current_step)
+        if mlflow.active_run() is not None:
+            self.log_arguments(arguments, step=self.current_step)
+            mlflow.log_metric(self.name, np.abs(value), step=self.current_step)
         return value
     
     def log_arguments(self, arguments, step):
@@ -38,7 +39,7 @@ class Searcher(ABC):
             x = self.hyperparams[name]
             if isinstance(x, Categorial):
                 value = x.values.index(value)
-            mlflow.log_metric(f'{self.name}_{self.dataset.name}_{name}', value, step=step)
+            mlflow.log_metric(f'{self.name}_{name}', value, step=step)
 
 
 def get_frameworks(*args, max_iter):

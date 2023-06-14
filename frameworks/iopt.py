@@ -69,8 +69,8 @@ class iOptSearcher(Searcher):
     def find_best_value(self):
 
         floats, discretes = self.split_hyperparams()
-        problem = Estimator(self.estimator, floats, discretes, self.dataset, self.calculate_metric_with_log,
-                            is_regression=self.dataset.dataset_type == 'regression')
+        problem = Estimator(self.estimator, floats, discretes, self.dataset, self.calculate_metric,
+                            is_regression=self.dataset.type == 'regression')
         framework_params = SolverParameters(itersLimit=self.max_iter)
         solver = Solver(problem, parameters=framework_params)
         solver_info = solver.Solve()

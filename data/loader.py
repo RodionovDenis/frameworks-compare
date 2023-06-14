@@ -17,7 +17,7 @@ class Dataset:
     name: str
     features: npt.NDArray
     targets: npt.NDArray
-    dataset_type: Literal['classification', 'regression'] = 'classification'
+    type: Literal['classification', 'regression'] = 'classification'
 
 
 class Parser(ABC):

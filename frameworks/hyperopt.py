@@ -14,7 +14,6 @@ class HyperoptSearcher(Searcher):
         self.name = 'Hyperopt'
     
     def find_best_value(self):
-
         arguments = self.__get_space()
         trial = hyperopt.Trials()
 
@@ -25,7 +24,7 @@ class HyperoptSearcher(Searcher):
 
     def __objective(self, arguments):
         self.__float_to_int(arguments)
-        value = self.calculate_metric_with_log(arguments)
+        value = self.calculate_metric(arguments)
         return value if self.is_regression else -value
     
     def __get_space(self):
