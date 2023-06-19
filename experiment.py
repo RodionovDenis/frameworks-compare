@@ -1,14 +1,16 @@
 import pandas as pd
 import mlflow
-import os
+import numpy as np
 
 from hyperparameter import Hyperparameter
 from frameworks import Searcher
+from utils import get_commit_hash
 
-from data.loader import Parser
+from data.loader import Parser, get_datasets
 from metrics import Metric
 from multiprocessing import Pool
 from itertools import product
+from collections import defaultdict
 
 
 class Experiment:
@@ -21,36 +23,59 @@ class Experiment:
         self.estimator = estimator
         self.hyperparams = hyperparams
         self.frameworks = {x.name: x for x in frameworks}
-        self.datasets = {x.name: x for x in datasets}
+        self.datasets = {x.name: x for x in get_datasets(*datasets)}
         self.metric = metric
 
-    def run(self, n_jobs=1, mlflow_uri: str | None = None):
+    def run(self, n_jobs: int = 1,
+                  non_deterministic_trials: int = 1,
+                  mlflow_uri: str | None = None):
+
+        assert non_deterministic_trials > 0, 'Something very strange'
+        assert n_jobs >= -1, 'Something very strange'
+        self.non_deterministic_trials = non_deterministic_trials
+        self.n_jobs = n_jobs
 
         if mlflow_uri is None:
-            return self.start_pool(n_jobs)
+            frame = self.start_pool()
+            return pd.DataFrame(frame).applymap(self.apply)
 
-        assert len(self.datasets) == 1, 'Mlflow need in one dataset'
+        assert len(self.datasets) == 1, 'Mlflow supports one dataset'
         self.setup_mlflow(mlflow_uri)
-        with mlflow.start_run(experiment_id=self.id, run_name=self.datasets.values[0].name):
+        dataset_name = next(iter(self.datasets))
+        with mlflow.start_run(experiment_id=self.id, run_name=dataset_name):
             self.log_params()
-            return self.start_pool(n_jobs)
+            frame = self.start_pool()
+            self.log_final_metric(frame, dataset_name)
+        return pd.DataFrame(frame).applymap(self.apply)
 
-    def start_pool(self, n_jobs):
-        columns = list(self.frameworks)
-        indexes = list(self.datasets)
-        products = list(product(columns, indexes))
-        frame = pd.DataFrame(index=indexes, columns=columns)
-        with Pool(n_jobs) as pool:
-            result = pool.map(self.objective, products)
-            for (framework, dataset), value in result:
-                frame[framework][dataset] = value
+    def start_pool(self):
+        trials = self.get_trials()
+        frame = defaultdict(lambda: defaultdict(list))
+
+        with Pool(self.n_jobs) as pool:
+            result = pool.starmap(self.objective, trials)
+            for dataset, framework, value in result:
+                frame[framework][dataset].append(value)
         return frame
+    
+    def get_trials(self):
+        names_with_suffix = []
+        for name, framework in self.frameworks.items():
+            value = 1 if framework.is_deterministic else self.non_deterministic_trials
+            names_with_suffix.extend((name, i) for i in range(1, value + 1))
+        return list((x, *y) for x, y in product(list(self.datasets), names_with_suffix))
+    
+    @staticmethod
+    def apply(x: list):
+        if len(x) == 1:
+            return x.pop()
+        return {'min': np.min(x), 'max': np.max(x), 'mean': np.mean(x)}
 
-    def objective(self, args):
-        framework, dataset = self.frameworks.get(args[0]), \
-                             self.datasets.get(args[1])
-        value = framework.tune(self.estimator, self.hyperparams, dataset, self.metric)
-        return args, value
+    def objective(self, dname: str, fname: str, suffix: int | None):
+        framework, dataset = self.frameworks[fname], self.datasets[dname]
+        value = framework.tune(self.estimator, self.hyperparams, dataset, self.metric,
+                               suffix_for_log=suffix)
+        return dname, fname, value
 
     def setup_mlflow(self, mlflow_uri):
         mlflow.set_tracking_uri(mlflow_uri)
@@ -58,11 +83,20 @@ class Experiment:
         self.id = mlflow.set_experiment(experiment_name).experiment_id
 
     def log_params(self):
+        for framework in self.frameworks.values():
+            framework.log_searcher_params()
         for name, param in self.hyperparams.items():
-            mlflow.log_param(name, str(param))
-        first = next(iter(self.frameworks.values()))
-        mlflow.log_param('max_iter', first.max_iter)
-        mlflow.log_param('metric', self.metric.name)
+            mlflow.log_param(f'Hyperparam/{name}', str(param))
+        mlflow.log_param('Experiment/metric', self.metric.log_params())
+        mlflow.log_param('Experiment/n_jobs', self.n_jobs)
+        mlflow.log_param('Experiment/non_deterministic_trials', self.non_deterministic_trials)
+        mlflow.log_param('Utils/frameworks-compare-hash-commit', get_commit_hash())
+    
+    def log_final_metric(self, frame, dataset_name):
+        mlflow.log_param('Utils/final-metric', 'mean')
+        for framework in self.frameworks:
+            values = frame[framework][dataset_name]
+            mlflow.log_metric(framework, np.mean(values))
 
     def setup_mlflow(self, mlflow_uri):
         mlflow.set_tracking_uri(mlflow_uri)
