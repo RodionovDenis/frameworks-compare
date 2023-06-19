@@ -8,19 +8,35 @@ from hyperparameter import Numerical, Categorial
 from .interface import Searcher
 
 
+ALGORITHMS = {
+    'random': hyperopt.rand.suggest,
+    'tpe': hyperopt.tpe.suggest,
+    'anneal': hyperopt.anneal.suggest,
+    'atpe': hyperopt.atpe.suggest,
+}
+
+
 class HyperoptSearcher(Searcher):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.name = 'Hyperopt'
+    def __init__(self, *args, algorithm: str = 'tpe', is_deterministic=False):
+        super().__init__(*args,
+                         name='Hyperopt',
+                         is_deterministic=is_deterministic)
+
+        self.algorithm, self.func_algorithm = algorithm, ALGORITHMS[algorithm]
     
     def find_best_value(self):
         arguments = self.__get_space()
         trial = hyperopt.Trials()
 
-        hyperopt.fmin(self.__objective, arguments, hyperopt.tpe.suggest, max_evals=self.max_iter,
-                      trials=trial, verbose=False)
+        hyperopt.fmin(self.__objective, arguments, 
+                      max_evals=self.max_iter, trials=trial, verbose=False, algo=self.func_algorithm)
 
         return np.abs(trial.best_trial['result']['loss'])
+    
+    def searcher_params(self):
+        return {
+            'algorithm': self.algorithm
+        }
 
     def __objective(self, arguments):
         self.__float_to_int(arguments)

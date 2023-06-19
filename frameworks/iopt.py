@@ -1,4 +1,5 @@
 import numpy as np
+import iOpt
 
 from iOpt.problem import Problem
 from iOpt.solver import Solver
@@ -6,6 +7,7 @@ from iOpt.solver_parametrs import SolverParameters
 
 from dataclasses import astuple
 from hyperparameter import Hyperparameter, Numerical, Categorial
+from utils import get_commit_hash
 
 from .interface import Searcher
 
@@ -62,19 +64,29 @@ class Estimator(Problem):
 
 
 class iOptSearcher(Searcher):
-    def __init__(self,*args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.name = 'iOpt'
+    def __init__(self, *args, is_deterministic=True, **kwargs):
+        super().__init__(*args,
+                         name='iOpt',
+                         is_deterministic=is_deterministic)
+
+        self.kwargs = kwargs
 
     def find_best_value(self):
 
         floats, discretes = self.split_hyperparams()
         problem = Estimator(self.estimator, floats, discretes, self.dataset, self.calculate_metric,
                             is_regression=self.dataset.type == 'regression')
-        framework_params = SolverParameters(itersLimit=self.max_iter)
+        framework_params = SolverParameters(itersLimit=self.max_iter, **self.kwargs)
         solver = Solver(problem, parameters=framework_params)
         solver_info = solver.Solve()
         return np.abs(solver_info.bestTrials[0].functionValues[-1].value)
+    
+    def searcher_params(self):
+        params = {
+            'hash_commit': get_commit_hash(iOpt.__path__[0])
+        }
+        params.update(self.kwargs)
+        return params
     
     def split_hyperparams(self):
         floats, discretes = {}, {}
