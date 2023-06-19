@@ -12,7 +12,7 @@ ALGORITHMS = {
     'tpe': optuna.samplers.TPESampler,
     'cmaes': optuna.samplers.CmaEsSampler,
     'patrial_fixed': optuna.samplers.PartialFixedSampler,
-    'nsgaii': optuna.samplers.NSGAIIISampler,
+    'nsgaii': optuna.samplers.NSGAIISampler,
     'qmc': optuna.samplers.QMCSampler
 }
 
@@ -34,7 +34,8 @@ class OptunaSearcher(Searcher):
     
     def searcher_params(self):
         return {
-            'algorithm': self.algorithm
+            'algorithm': self.algorithm,
+            'version': optuna.__version__
         }
 
     def objective(self, trial: optuna.Trial):

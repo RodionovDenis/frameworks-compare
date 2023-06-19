@@ -31,4 +31,4 @@ if __name__ == '__main__':
     experiment = Experiment(RandomForestClassifier, hyperparams, seachers, datasets,
                             Accuracy(preprocessing='standard'))
 
-    result = experiment.run(n_jobs=6, non_deterministic_trials=2, mlflow_uri='http://127.0.0.1:5000')
+    result = experiment.run(n_jobs=6, non_deterministic_trials=2)

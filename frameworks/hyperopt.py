@@ -35,7 +35,8 @@ class HyperoptSearcher(Searcher):
     
     def searcher_params(self):
         return {
-            'algorithm': self.algorithm
+            'algorithm': self.algorithm,
+            'version': hyperopt.__version__
         }
 
     def __objective(self, arguments):
