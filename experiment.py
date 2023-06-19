@@ -5,12 +5,13 @@ import numpy as np
 from hyperparameter import Hyperparameter
 from frameworks import Searcher
 from utils import get_commit_hash
-
 from data.loader import Parser, get_datasets
 from metrics import Metric
+
 from multiprocessing import Pool
 from itertools import product
 from collections import defaultdict
+from functools import partial
 
 
 class Experiment:
@@ -100,5 +101,8 @@ class Experiment:
 
     def setup_mlflow(self, mlflow_uri):
         mlflow.set_tracking_uri(mlflow_uri)
-        experiment_name = self.estimator.__name__.lower()
+        if isinstance(self.estimator, partial):
+            experiment_name = self.estimator.func.__name__.lower()
+        else:
+            experiment_name = self.estimator.__name__.lower()
         self.id = mlflow.set_experiment(experiment_name).experiment_id

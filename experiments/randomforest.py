@@ -1,13 +1,10 @@
-import data.loader as loader
-
-from data.loader import get_datasets
-from frameworks import  OptunaSearcher, HyperoptSearcher, iOptSearcher, get_frameworks
-from metrics import CrossValidation
+from data import CNAE9, Digits
+from frameworks import  Default, OptunaSearcher, HyperoptSearcher, iOptSearcher
+from metrics import Accuracy
 from experiment import Experiment
-
-from sklearn.metrics import accuracy_score
-from sklearn.ensemble import RandomForestClassifier
 from hyperparameter import Numerical, Categorial
+
+from sklearn.ensemble import RandomForestClassifier
 
 
 if __name__ == '__main__':
@@ -20,11 +17,18 @@ if __name__ == '__main__':
         'min_samples_leaf': Numerical('int', 2, 10),
     }
 
-    seachers = get_frameworks(OptunaSearcher, HyperoptSearcher, iOptSearcher, max_iter=200)
+    max_iter = 5
 
-    parsers = get_datasets(loader.CNAE9)
+    seachers = [
+        Default(max_iter),
+        OptunaSearcher(max_iter),
+        HyperoptSearcher(max_iter),
+        iOptSearcher(max_iter)
+    ]
 
-    experiment = Experiment(RandomForestClassifier, hyperparams, seachers, parsers,
-                            CrossValidation(accuracy_score))
+    datasets = [CNAE9, Digits]
 
-    experiment.run(n_jobs=4, mlflow_uri='http://192.168.220.17:8891')
+    experiment = Experiment(RandomForestClassifier, hyperparams, seachers, datasets,
+                            Accuracy(preprocessing='standard'))
+
+    result = experiment.run(n_jobs=6, non_deterministic_trials=2, mlflow_uri='http://127.0.0.1:5000')

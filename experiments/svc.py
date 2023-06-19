@@ -1,12 +1,9 @@
-import data.loader as loader
-
-from data.loader import get_datasets
-from frameworks import OptunaSearcher, HyperoptSearcher, iOptSearcher, get_frameworks
-from metrics import CrossValidation
+from data import CNAE9, Digits
+from frameworks import  Default, OptunaSearcher, HyperoptSearcher, iOptSearcher
+from metrics import Accuracy
 from experiment import Experiment
 from hyperparameter import Numerical, Categorial
 
-from sklearn.metrics import f1_score
 from sklearn.svm import SVC
 
 
@@ -18,12 +15,18 @@ if __name__ == '__main__':
         'kernel': Categorial('linear', 'poly', 'rbf', 'sigmoid')
     }
 
-    frameworks = get_frameworks(OptunaSearcher, HyperoptSearcher, iOptSearcher,
-                                max_iter=5)
-    
-    datasets = get_datasets(loader.BreastCancer)
+    max_iter = 5
 
-    experiment = Experiment(SVC, hyperparams, frameworks, datasets,
-                            CrossValidation(f1_score, average='binary'))
+    seachers = [
+        Default(max_iter),
+        OptunaSearcher(max_iter),
+        HyperoptSearcher(max_iter),
+        iOptSearcher(max_iter)
+    ]
 
-    experiment.run(n_jobs=2, mlflow_uri='http://127.0.0.1:5000')
+    datasets = [CNAE9, Digits]
+
+    experiment = Experiment(SVC, hyperparams, seachers, datasets,
+                            Accuracy(preprocessing='standard'))
+
+    result = experiment.run(n_jobs=6, non_deterministic_trials=2)
