@@ -13,17 +13,20 @@ from itertools import product
 from collections import defaultdict
 from functools import partial
 
+# fix objective (experiment_name in tune)
+# log metric with link on params (searchers)
+
 
 class Experiment:
     def __init__(self, estimator,
                        hyperparams: dict[str, Hyperparameter],
-                       frameworks: list[Searcher],
+                       searchers: list[Searcher],
                        datasets: list[Parser],
                        metric: Metric):
 
         self.estimator = estimator
         self.hyperparams = hyperparams
-        self.frameworks = {x.name: x for x in frameworks}
+        self.searchers = {str(x): x for x in searchers}
         self.datasets = {x.name: x for x in get_datasets(*datasets)}
         self.metric = metric
 
@@ -55,14 +58,14 @@ class Experiment:
 
         with Pool(self.n_jobs) as pool:
             result = pool.starmap(self.objective, trials)
-            for dataset, framework, value in result:
-                frame[framework][dataset].append(value)
+            for dataset, searcher, value in result:
+                frame[searcher][dataset].append(value)
         return frame
     
     def get_trials(self):
         names_with_suffix = []
-        for name, framework in self.frameworks.items():
-            value = 1 if framework.is_deterministic else self.non_deterministic_trials
+        for name, searcher in self.searchers.items():
+            value = 1 if searcher.is_deterministic else self.non_deterministic_trials
             names_with_suffix.extend((name, i) for i in range(1, value + 1))
         return list((x, *y) for x, y in product(list(self.datasets), names_with_suffix))
     
@@ -72,20 +75,17 @@ class Experiment:
             return x.pop()
         return {'min': np.min(x), 'max': np.max(x), 'mean': np.mean(x)}
 
-    def objective(self, dname: str, fname: str, suffix: int | None):
-        framework, dataset = self.frameworks[fname], self.datasets[dname]
-        value = framework.tune(self.estimator, self.hyperparams, dataset, self.metric,
-                               suffix_for_log=suffix)
+    def objective(self, dname: str, fname: str, trial: int | None):
+        searcher, dataset = self.searchers[fname], self.datasets[dname]
+        value = searcher.tune(self.estimator, self.hyperparams, dataset, self.metric,
+                               number_of_trial=trial)
         return dname, fname, value
 
-    def setup_mlflow(self, mlflow_uri):
-        mlflow.set_tracking_uri(mlflow_uri)
-        experiment_name = self.estimator.__name__
-        self.id = mlflow.set_experiment(experiment_name).experiment_id
-
     def log_params(self):
-        for framework in self.frameworks.values():
-            framework.log_searcher_params()
+        for i, (name, searcher) in enumerate(self.searchers.items(), start=1):
+            mlflow.log_param(f'Searcher/{i}', name)
+            if version := searcher.framework_version():
+                mlflow.log_param(f'Framework/{searcher.framework_name}-version', version)
         for name, param in self.hyperparams.items():
             mlflow.log_param(f'Hyperparam/{name}', str(param))
         mlflow.log_param('Experiment/metric', self.metric.log_params())
@@ -95,9 +95,12 @@ class Experiment:
     
     def log_final_metric(self, frame, dataset_name):
         mlflow.log_param('Utils/final-metric', 'mean')
-        for framework in self.frameworks:
-            values = frame[framework][dataset_name]
-            mlflow.log_metric(framework, np.mean(values))
+        frameworks_metric = defaultdict(list)
+        for name, searcher in self.searchers.items():
+            values = frame[name][dataset_name]
+            frameworks_metric[searcher.framework_name].append(np.mean(values))
+        for name, values in frameworks_metric.items():
+            mlflow.log_metric(name, np.max(values))
 
     def setup_mlflow(self, mlflow_uri):
         mlflow.set_tracking_uri(mlflow_uri)
