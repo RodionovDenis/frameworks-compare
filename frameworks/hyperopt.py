@@ -17,9 +17,9 @@ ALGORITHMS = {
 
 
 class HyperoptSearcher(Searcher):
-    def __init__(self, *args, algorithm: str = 'tpe', is_deterministic=False):
-        super().__init__(*args,
-                         name='Hyperopt',
+    def __init__(self, max_iter, *, algorithm: str = 'tpe', is_deterministic=False):
+        super().__init__(framework_name='Hyperopt',
+                         max_iter=max_iter,
                          is_deterministic=is_deterministic)
 
         self.algorithm, self.func_algorithm = algorithm, ALGORITHMS[algorithm]
@@ -33,11 +33,11 @@ class HyperoptSearcher(Searcher):
 
         return np.abs(trial.best_trial['result']['loss'])
     
-    def searcher_params(self):
-        return {
-            'algorithm': self.algorithm,
-            'version': hyperopt.__version__
-        }
+    def get_searcher_params(self):
+        return {'algorithm': self.algorithm}
+    
+    def framework_version(self):
+        return hyperopt.__version__
 
     def __objective(self, arguments):
         self.__float_to_int(arguments)

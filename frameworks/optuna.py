@@ -18,9 +18,9 @@ ALGORITHMS = {
 
 
 class OptunaSearcher(Searcher):
-    def __init__(self, *args, algorithm: str = 'tpe', is_deterministic=False):
-        super().__init__(*args,
-                         name='Optuna',
+    def __init__(self, max_iter, *, algorithm: str = 'tpe', is_deterministic=False):
+        super().__init__(framework_name='Optuna',
+                         max_iter=max_iter,
                          is_deterministic=is_deterministic)
 
         self.algorithm, self.func_algorithm = algorithm, ALGORITHMS[algorithm]
@@ -32,11 +32,11 @@ class OptunaSearcher(Searcher):
         study.optimize(self.objective, n_trials=self.max_iter)
         return study.best_value
     
-    def searcher_params(self):
-        return {
-            'algorithm': self.algorithm,
-            'version': optuna.__version__
-        }
+    def get_searcher_params(self):
+        return {'algorithm': self.algorithm}
+    
+    def framework_version(self):
+        return optuna.__version__
 
     def objective(self, trial: optuna.Trial):
         arguments = {name: self.get_value(name, param, trial) for name, param in self.hyperparams.items()}

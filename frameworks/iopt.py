@@ -64,9 +64,9 @@ class Estimator(Problem):
 
 
 class iOptSearcher(Searcher):
-    def __init__(self, *args, is_deterministic=True, **kwargs):
-        super().__init__(*args,
-                         name='iOpt',
+    def __init__(self, max_iter, *, is_deterministic=True, **kwargs):
+        super().__init__(framework_name='iOpt',
+                         max_iter=max_iter,
                          is_deterministic=is_deterministic)
 
         self.kwargs = kwargs
@@ -81,12 +81,11 @@ class iOptSearcher(Searcher):
         solver_info = solver.Solve()
         return np.abs(solver_info.bestTrials[0].functionValues[-1].value)
     
-    def searcher_params(self):
-        params = {
-            'hash_commit': get_commit_hash(iOpt.__path__[0])
-        }
-        params.update(self.kwargs)
-        return params
+    def get_searcher_params(self):
+        return self.kwargs
+    
+    def framework_version(self):
+        return get_commit_hash(iOpt.__path__[0])
     
     def split_hyperparams(self):
         floats, discretes = {}, {}

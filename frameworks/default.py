@@ -4,8 +4,10 @@ import mlflow
 
 
 class Default(Searcher):
-    def __init__(self, *args) -> None:
-        super().__init__(*args, name='Default', is_deterministic=True)
+    def __init__(self, max_iter) -> None:
+        super().__init__(framework_name='Default',
+                         max_iter=max_iter,
+                         is_deterministic=True)
     
     def find_best_value(self):
         model = self.estimator()
@@ -14,7 +16,10 @@ class Default(Searcher):
             self.log_values(value)
         return value
     
-    def searcher_params(self):
+    def get_searcher_params(self):
+        pass
+
+    def framework_version(self):
         pass
     
     def log_values(self, value):
