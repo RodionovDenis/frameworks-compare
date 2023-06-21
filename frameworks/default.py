@@ -1,6 +1,7 @@
 from .interface import Searcher
 
 import mlflow
+import sklearn
 
 
 class Default(Searcher):
@@ -20,9 +21,9 @@ class Default(Searcher):
         return {}
 
     def framework_version(self):
-        pass
+        return f'{sklearn.__version__} (sklearn-version)'
     
     def log_values(self, value):
         for _ in range(self.max_iter):
             self.current_step += 1
-            mlflow.log_metric(self.log_name, value, step=self.current_step)
+            mlflow.log_metric(self.log_metric, value, step=self.current_step)

@@ -44,7 +44,8 @@ class Searcher(ABC):
         self.estimator, self.hyperparams, self.dataset, self.metric = estimator, hyperparams, dataset, metric
         self.is_regression = self.dataset.type == 'regression'
         self.current_step = 0
-        self.experiment_name = experiment_name
+        self.log_metric = f'metric/{experiment_name}'
+        self.log_hyperparam = lambda x: f'hyperparam/{x}/{experiment_name}'
 
         return self.find_best_value()
     
@@ -53,7 +54,7 @@ class Searcher(ABC):
             x = self.hyperparams[name]
             if isinstance(x, Categorial):
                 value = x.values.index(value)
-            mlflow.log_metric(f'{self.experiment_name}/{name}', value, step=step)
+            mlflow.log_metric(self.log_hyperparam(name), value, step=step)
 
     def calculate_metric(self, arguments):
         model = self.estimator(**arguments)
@@ -61,5 +62,5 @@ class Searcher(ABC):
         self.current_step += 1
         if mlflow.active_run() is not None:
             self.log_hyperparameters_point(arguments, step=self.current_step)
-            mlflow.log_metric(f'{self.experiment_name}/metric', np.abs(value), step=self.current_step)
+            mlflow.log_metric(self.log_metric, np.abs(value), step=self.current_step)
         return value

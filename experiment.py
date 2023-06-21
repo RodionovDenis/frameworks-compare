@@ -85,8 +85,7 @@ class Experiment:
     def log_params(self):
         for i, (name, searcher) in enumerate(self.searchers.items(), start=1):
             mlflow.log_param(f'Searcher/{i}', name)
-            if version := searcher.framework_version():
-                mlflow.log_param(f'Framework/{searcher.framework_name}-version', version)
+            mlflow.log_param(f'Framework/{searcher.framework_name}-version', searcher.framework_version())
         for name, param in self.hyperparams.items():
             mlflow.log_param(f'Hyperparam/{name}', str(param))
         mlflow.log_param('Experiment/metric', self.metric.log_params())
