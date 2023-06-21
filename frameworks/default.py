@@ -17,7 +17,7 @@ class Default(Searcher):
         return value
     
     def get_searcher_params(self):
-        pass
+        return {}
 
     def framework_version(self):
         pass

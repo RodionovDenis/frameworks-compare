@@ -82,7 +82,7 @@ class iOptSearcher(Searcher):
         return np.abs(solver_info.bestTrials[0].functionValues[-1].value)
     
     def get_searcher_params(self):
-        return self.kwargs
+        return self.kwargs.copy()
     
     def framework_version(self):
         return get_commit_hash(iOpt.__path__[0])

@@ -63,11 +63,12 @@ class Experiment:
         return frame
     
     def get_trials(self):
-        names_with_suffix = []
-        for name, searcher in self.searchers.items():
+        names = []
+        for i, (name, searcher) in enumerate(self.searchers.items(), start=1):
             value = 1 if searcher.is_deterministic else self.non_deterministic_trials
-            names_with_suffix.extend((name, i) for i in range(1, value + 1))
-        return list((x, *y) for x, y in product(list(self.datasets), names_with_suffix))
+            names.extend((name, f'{searcher.framework_name}/searcher{i}/trial{j}')
+                         for j in range(1, value + 1))
+        return list((x, *y) for x, y in product(list(self.datasets), names))
     
     @staticmethod
     def apply(x: list):
@@ -75,11 +76,11 @@ class Experiment:
             return x.pop()
         return {'min': np.min(x), 'max': np.max(x), 'mean': np.mean(x)}
 
-    def objective(self, dname: str, fname: str, trial: int | None):
-        searcher, dataset = self.searchers[fname], self.datasets[dname]
+    def objective(self, dname: str, sname: str, experiment_name: str):
+        searcher, dataset = self.searchers[sname], self.datasets[dname]
         value = searcher.tune(self.estimator, self.hyperparams, dataset, self.metric,
-                               number_of_trial=trial)
-        return dname, fname, value
+                              experiment_name=experiment_name)
+        return dname, sname, value
 
     def log_params(self):
         for i, (name, searcher) in enumerate(self.searchers.items(), start=1):
