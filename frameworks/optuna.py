@@ -7,13 +7,10 @@ from .interface import Searcher
 
 
 ALGORITHMS = {
-    'grid': optuna.samplers.GridSampler,
     'random': optuna.samplers.RandomSampler,
     'tpe': optuna.samplers.TPESampler,
     'cmaes': optuna.samplers.CmaEsSampler,
-    'patrial_fixed': optuna.samplers.PartialFixedSampler,
     'nsgaii': optuna.samplers.NSGAIISampler,
-    'qmc': optuna.samplers.QMCSampler
 }
 
 
@@ -24,11 +21,14 @@ class OptunaSearcher(Searcher):
                          is_deterministic=is_deterministic)
 
         self.algorithm, self.func_algorithm = algorithm, ALGORITHMS[algorithm]
+        self.algorithm_kwargs = {}
+        if self.algorithm == 'cmaes':
+            self.algorithm_kwargs['warn_independent_sampling'] = False
 
     def find_best_value(self):
         optuna.logging.disable_default_handler()
         study = optuna.create_study(direction='minimize' if self.is_regression else 'maximize',
-                                    sampler=self.func_algorithm())
+                                    sampler=self.func_algorithm(**self.algorithm_kwargs))
         study.optimize(self.objective, n_trials=self.max_iter)
         return study.best_value
     

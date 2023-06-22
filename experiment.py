@@ -13,9 +13,6 @@ from itertools import product
 from collections import defaultdict
 from functools import partial
 
-# fix objective (experiment_name in tune)
-# log metric with link on params (searchers)
-
 
 class Experiment:
     def __init__(self, estimator,

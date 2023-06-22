@@ -12,7 +12,6 @@ ALGORITHMS = {
     'random': hyperopt.rand.suggest,
     'tpe': hyperopt.tpe.suggest,
     'anneal': hyperopt.anneal.suggest,
-    'atpe': hyperopt.atpe.suggest,
 }
 
 

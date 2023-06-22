@@ -44,8 +44,8 @@ class Searcher(ABC):
         self.estimator, self.hyperparams, self.dataset, self.metric = estimator, hyperparams, dataset, metric
         self.is_regression = self.dataset.type == 'regression'
         self.current_step = 0
-        self.log_metric = f'metric/{experiment_name}'
-        self.log_hyperparam = lambda x: f'hyperparam/{x}/{experiment_name}'
+        self.log_metric = f'trials/{experiment_name}/metric'
+        self.log_hyperparam = lambda x: f'trials/{experiment_name}/hyperparam/{x}'
 
         return self.find_best_value()
     
