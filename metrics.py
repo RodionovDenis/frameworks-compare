@@ -57,8 +57,8 @@ class Accuracy(Metric):
 
 
 class F1(Metric):
-    def __init__(self, prepressing, average: Literal['binary', 'macro', 'micro']):
-        super().__init__(f'f1-score ({self.average})', prepressing)
+    def __init__(self, preprocessing, average: Literal['binary', 'macro', 'micro']):
+        super().__init__(f'f1-score ({average})', preprocessing)
         self.average = average
     
     def get_score(self, model, x, y):
@@ -67,7 +67,7 @@ class F1(Metric):
 
 class RocAuc(Metric):
     def __init__(self, preprocessing, average: Literal['binary', 'macro', 'micro']):
-        super().__init__(f'f1-score ({self.average})', preprocessing)
+        super().__init__(f'f1-score ({average})', preprocessing)
         self.average = average
     
     def get_score(self, model, x, y):
