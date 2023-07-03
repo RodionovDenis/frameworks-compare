@@ -1,5 +1,5 @@
 from .loader import (Adult, 
-                     BreastCancer, 
+                     BreastCancer,
                      Digits, 
                      BankMarketing, 
                      CNAE9, 
@@ -8,7 +8,15 @@ from .loader import (Adult,
                      MagicGammaTelescope,
                      Mushroom,
                      Semeion,
-                     WineQuality)
+                     WineQuality,
+                     Ecoli,
+                     CreditApproval,
+                     Balance,
+                     Parkinsons,
+                     Zoo,
+                     CylinderBands,
+                     ConnectionBenchVowel)
 
-__all__ = [Adult, BreastCancer, Digits, BankMarketing, CNAE9, StatlogSegmentation, DryBean, MagicGammaTelescope,
-           Mushroom, Semeion, WineQuality]
+__all__ = [Adult, BreastCancer, Digits, BankMarketing, CNAE9, StatlogSegmentation, DryBean, 
+           MagicGammaTelescope, Mushroom, Semeion, WineQuality, Ecoli, CreditApproval, Balance,
+           Parkinsons, Zoo, CylinderBands, ConnectionBenchVowel]
