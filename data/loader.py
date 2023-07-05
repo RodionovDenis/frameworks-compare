@@ -54,8 +54,13 @@ class UCIParser(Parser):
         number_features = len(features[0])
         return np.array(
             [self.preprocess_feature([sample[i] for sample in features])
-             for i in range(number_features) if (skip is None) or (i != skip)]
+             for i in range(number_features) if (skip is None) or self.feature_skip_condition(i, skip)]
         ).T
+    
+    @staticmethod
+    def feature_skip_condition(i, skip):
+        return (isinstance(skip, int) and i != skip) or \
+               (isinstance(skip, list) and i not in skip)
     
     def preprocess_feature(self, feature):
         try:
@@ -101,7 +106,7 @@ class Digits:
     def load_dataset(self) -> Dataset:
         x, y = load_digits(return_X_y=True)
         return Dataset('Digits', x, y)
-    
+
 
 class Adult(UCIParser):
     def __init__(self):
@@ -183,6 +188,69 @@ class WineQuality(UCIParser):
     def load_dataset(self) -> Dataset:
         features, targets = self.parse_text_file(index_target=-1, sample_skip=0, feature_skip=0)
         return Dataset('Wine Quality', features, targets, 'regression')
+
+
+class Ecoli(UCIParser):
+    def __init__(self):
+        super().__init__('ecoli/ecoli.data', spliter=None)
+        
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=-1, feature_skip=0)
+        return Dataset('Ecoli', features, targets)
+
+
+class CreditApproval(UCIParser):
+    def __init__(self):
+        super().__init__('credit-approval/crx.data', spliter=',')
+        
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=-1)
+        return Dataset('Credit Approval', features, targets)
+
+
+class Balance(UCIParser):
+    def __init__(self):
+        super().__init__('balance/balance-scale.data', spliter=',')
+        
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=0)
+        return Dataset('Balance', features, targets)
+
+
+class Parkinsons(UCIParser):
+    def __init__(self):
+        super().__init__('parkinsons/parkinsons.data', spliter=',')
+    
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=-7, feature_skip=0, sample_skip=0)
+        return Dataset('Parkinsons', features, targets)
+    
+
+class Zoo(UCIParser):
+    def __init__(self):
+        super().__init__('zoo/zoo.data', spliter=',')
+    
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=-1, feature_skip=0)
+        return Dataset('Zoo', features, targets)
+
+
+class CylinderBands(UCIParser):
+    def __init__(self):
+        super().__init__('cylinder-bands/bands.data', spliter=',')
+    
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=-1, feature_skip=[0, 1])
+        return Dataset('Cylinder Bands', features, targets)
+
+
+class ConnectionBenchVowel(UCIParser):
+    def __init__(self):
+        super().__init__('connection-bench-vowel/vowel.data', spliter=',')
+        
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_text_file(index_target=-1, feature_skip=0)
+        return Dataset('Connection Bench Vowel', features, targets)
 
 
 def get_datasets(*args) -> list[Dataset]:
