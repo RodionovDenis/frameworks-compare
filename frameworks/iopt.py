@@ -19,46 +19,46 @@ class Estimator(Problem):
         self.estimator, float_hyperparams, discrete_hyperparams, self.dataset, self.metric = args
         self.is_regression = kwargs['is_regression']
 
-        self.numberOfFloatVariables = len(float_hyperparams)
-        self.numberOfDiscreteVariables = len(discrete_hyperparams)
+        self.number_of_float_variables = len(float_hyperparams)
+        self.number_of_discrete_variables = len(discrete_hyperparams)
         self.dimension = len(float_hyperparams) + len(discrete_hyperparams)
-        self.numberOfObjectives = 1
+        self.number_of_objectives = 1
 
         self.float_variables_types, self.is_log_float = [], []
         for name, param in float_hyperparams.items():
-            self.floatVariableNames.append(name)
+            self.float_variable_names.append(name)
             type, min_v, max_v, log = astuple(param)
             self.float_variables_types.append(type)
-            self.lowerBoundOfFloatVariables.append(np.log(min_v) if log else min_v)
-            self.upperBoundOfFloatVariables.append(np.log(max_v) if log else max_v)
+            self.lower_bound_of_float_variables.append(np.log(min_v) if log else min_v)
+            self.upper_bound_of_float_variables.append(np.log(max_v) if log else max_v)
             self.is_log_float.append(log)
             
         for name, param in discrete_hyperparams.items():
-            self.discreteVariableNames.append(name)
+            self.discrete_variable_names.append(name)
             if isinstance(param, Numerical):
                 type, min_v, max_v, log = astuple(param)
                 assert type == 'int', 'Type must be int'
                 assert not log, 'Log must be off'
-                self.discreteVariableValues.append([str(x) for x in range(min_v, max_v + 1)])
+                self.discrete_variable_values.append([str(x) for x in range(min_v, max_v + 1)])
             elif isinstance(param, Categorial):
-                self.discreteVariableValues.append(param.values)
+                self.discrete_variable_values.append(param.values)
 
-    def Calculate(self, point, functionValue):
+    def calculate(self, point, function_value):
             arguments = self.__get_argument_dict(point)
             value = self.metric(arguments)
-            functionValue.value = value if self.is_regression else -value
-            return functionValue
+            function_value.value = value if self.is_regression else -value
+            return function_value
 
     def __get_argument_dict(self, point):
             arguments = {}
-            for name, type, value, log in zip(self.floatVariableNames, self.float_variables_types,
-                                              point.floatVariables,
+            for name, type, value, log in zip(self.float_variable_names, self.float_variables_types,
+                                              point.float_variables,
                                               self.is_log_float):
                 value = np.exp(value) if log else value
                 value = int(value + 0.5) if type == 'int' else value
                 arguments[name] = value
-            if point.discreteVariables is not None:
-                for name, value in zip(self.discreteVariableNames, point.discreteVariables):
+            if point.discrete_variables is not None:
+                for name, value in zip(self.discrete_variable_names, point.discrete_variables):
                     arguments[name] = int(value) if value.isnumeric() else value
             return arguments
 
@@ -76,10 +76,10 @@ class iOptSearcher(Searcher):
         floats, discretes = self.split_hyperparams()
         problem = Estimator(self.estimator, floats, discretes, self.dataset, self.calculate_metric,
                             is_regression=self.dataset.type == 'regression')
-        framework_params = SolverParameters(itersLimit=self.max_iter, **self.kwargs)
+        framework_params = SolverParameters(iters_limit=self.max_iter, **self.kwargs)
         solver = Solver(problem, parameters=framework_params)
-        solver_info = solver.Solve()
-        return np.abs(solver_info.bestTrials[0].functionValues[-1].value)
+        solver_info = solver.solve()
+        return np.abs(solver_info.best_trials[0].function_values[-1].value)
     
     def get_searcher_params(self):
         return self.kwargs.copy()

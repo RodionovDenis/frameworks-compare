@@ -196,7 +196,9 @@ class Ecoli(UCIParser):
         
     def load_dataset(self) -> Dataset:
         features, targets = self.parse_text_file(index_target=-1, feature_skip=0)
-        return Dataset('Ecoli', features, targets)
+        indexes = np.isin(targets, [2, 3, 6], invert=True)
+        return Dataset('Ecoli', features[indexes], 
+                                LabelEncoder().fit_transform(targets[indexes]))
 
 
 class CreditApproval(UCIParser):
