@@ -29,7 +29,8 @@ class Experiment:
 
     def run(self, n_jobs: int = 1,
                   non_deterministic_trials: int = 1,
-                  mlflow_uri: str | None = None):
+                  mlflow_uri: str | None = None,
+                  run_description: str | None = None):
 
         assert non_deterministic_trials > 0, 'Something very strange'
         assert n_jobs >= -1, 'Something very strange'
@@ -43,7 +44,7 @@ class Experiment:
         assert len(self.datasets) == 1, 'Mlflow supports one dataset'
         self.setup_mlflow(mlflow_uri)
         dataset_name = next(iter(self.datasets))
-        with mlflow.start_run(experiment_id=self.id, run_name=dataset_name):
+        with mlflow.start_run(experiment_id=self.id, run_name=dataset_name, description=run_description):
             self.log_params()
             frame = self.start_pool()
             self.log_final_metric(frame, dataset_name)
