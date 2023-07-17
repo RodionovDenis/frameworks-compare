@@ -1,7 +1,6 @@
 # frameworks 
 optuna
 hyperopt
-iOpt
 
 # estimators
 scikit-learn
