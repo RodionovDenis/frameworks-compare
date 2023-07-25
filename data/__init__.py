@@ -8,15 +8,15 @@ from .loader import (Adult,
                      MagicGammaTelescope,
                      Mushroom,
                      Semeion,
-                     WineQuality,
                      Ecoli,
                      CreditApproval,
                      Balance,
                      Parkinsons,
                      Zoo,
                      CylinderBands,
-                     ConnectionBenchVowel)
+                     ConnectionBenchVowel,
+                     Banana)
 
 __all__ = [Adult, BreastCancer, Digits, BankMarketing, CNAE9, StatlogSegmentation, DryBean, 
-           MagicGammaTelescope, Mushroom, Semeion, WineQuality, Ecoli, CreditApproval, Balance,
-           Parkinsons, Zoo, CylinderBands, ConnectionBenchVowel]
+           MagicGammaTelescope, Mushroom, Semeion, Ecoli, CreditApproval, Balance,
+           Parkinsons, Zoo, CylinderBands, ConnectionBenchVowel, Banana]
