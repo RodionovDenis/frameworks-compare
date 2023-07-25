@@ -85,15 +85,15 @@ class TextParser(Parser):
     def load_data(self, sample_skip=None):
         with open(self.path) as f:
             data = []
-            sample = 0
+            sample = -1
             while (row := f.readline()).strip():
+                sample += 1
                 if (sample_skip is not None) and (sample == sample_skip):
                     continue
                 input_ = [x.strip() for x in row.split(self.spliter)]
                 if self.skips in input_:
                     continue
                 data.append(input_)
-                sample += 1
         return data
 
 
