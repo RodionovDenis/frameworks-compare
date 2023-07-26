@@ -27,7 +27,7 @@ class OptunaSearcher(Searcher):
 
     def find_best_value(self):
         optuna.logging.disable_default_handler()
-        study = optuna.create_study(direction='minimize' if self.is_regression else 'maximize',
+        study = optuna.create_study(direction='maximize',
                                     sampler=self.func_algorithm(**self.algorithm_kwargs))
         study.optimize(self.objective, n_trials=self.max_iter)
         return study.best_value

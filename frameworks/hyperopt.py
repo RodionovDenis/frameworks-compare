@@ -40,8 +40,7 @@ class HyperoptSearcher(Searcher):
 
     def __objective(self, arguments):
         self.__float_to_int(arguments)
-        value = self.calculate_metric(arguments)
-        return value if self.is_regression else -value
+        return -self.calculate_metric(arguments)
     
     def __get_space(self):
         arguments = {}

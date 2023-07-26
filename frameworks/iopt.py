@@ -17,7 +17,6 @@ class Estimator(Problem):
         super().__init__()
 
         self.estimator, float_hyperparams, discrete_hyperparams, self.dataset, self.metric = args
-        self.is_regression = kwargs['is_regression']
 
         self.number_of_float_variables = len(float_hyperparams)
         self.number_of_discrete_variables = len(discrete_hyperparams)
@@ -45,8 +44,7 @@ class Estimator(Problem):
 
     def calculate(self, point, function_value):
             arguments = self.__get_argument_dict(point)
-            value = self.metric(arguments)
-            function_value.value = value if self.is_regression else -value
+            function_value.value = -self.metric(arguments)
             return function_value
 
     def __get_argument_dict(self, point):
@@ -74,8 +72,7 @@ class iOptSearcher(Searcher):
     def find_best_value(self):
 
         floats, discretes = self.split_hyperparams()
-        problem = Estimator(self.estimator, floats, discretes, self.dataset, self.calculate_metric,
-                            is_regression=self.dataset.type == 'regression')
+        problem = Estimator(self.estimator, floats, discretes, self.dataset, self.calculate_metric)
         framework_params = SolverParameters(iters_limit=self.max_iter, **self.kwargs)
         solver = Solver(problem, parameters=framework_params)
         solver_info = solver.solve()
