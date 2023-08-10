@@ -1,5 +1,5 @@
-from metrics import F1, Accuracy
-from .loader import (Adult, 
+from .loader import (Dataset,
+                     Adult, 
                      BreastCancer,
                      Digits, 
                      BankMarketing, 
@@ -24,35 +24,7 @@ from .loader import (Adult,
                      Student,
                      Wilt)
 
-DATASET_TO_METRIC = {
-
-    Adult:                      F1(preprocessing='standard', average='binary'),
-    BreastCancer:               F1(preprocessing='standard', average='binary'),
-    Digits:                     Accuracy(preprocessing='standard'),
-    BankMarketing:              Accuracy(preprocessing='standard'),
-    CNAE9:                      Accuracy(preprocessing='standard'),
-    StatlogSegmentation:        Accuracy(preprocessing='standard'),
-    DryBean:                    F1(preprocessing='standard', average='macro'),
-    MagicGammaTelescope:        F1(preprocessing='standard', average='binary'),
-    Mushroom:                   F1(preprocessing='standard', average='binary'),
-    Semeion:                    Accuracy(preprocessing='standard'),
-    Ecoli:                      F1(preprocessing='standard', average='macro'),
-    CreditApproval:             F1(preprocessing='standard', average='binary'),
-    Balance:                    F1(preprocessing='standard', average='macro'),
-    Parkinsons:                 F1(preprocessing='standard', average='binary'),
-    Zoo:                        F1(preprocessing='standard', average='macro'),
-    CylinderBands:              F1(preprocessing='standard', average='binary'),
-    ConnectionBenchVowel:       Accuracy(preprocessing='standard'),
-    Banana:                     F1(preprocessing='standard', average='binary'),
-    Banknote:                   F1(preprocessing='standard', average='binary'),
-    CarEvaluation:              F1(preprocessing='standard', average='macro'),
-    Letter:                     Accuracy(preprocessing='standard'),
-    OptDigits:                  Accuracy(preprocessing='standard'),
-    Student:                    F1(preprocessing='standard', average='macro'),
-    Wilt:                       F1(preprocessing='standard', average='binary')
-
-}
-__all__ = [Adult, BreastCancer, Digits, BankMarketing, CNAE9, StatlogSegmentation, DryBean, 
+__all__ = [Dataset, Adult, BreastCancer, Digits, BankMarketing, CNAE9, StatlogSegmentation, DryBean, 
            MagicGammaTelescope, Mushroom, Semeion, Ecoli, CreditApproval, Balance,
            Parkinsons, Zoo, CylinderBands, ConnectionBenchVowel, Banana, Banknote, CarEvaluation,
-           Letter, OptDigits, Student, Wilt, DATASET_TO_METRIC]
+           Letter, OptDigits, Student, Wilt]

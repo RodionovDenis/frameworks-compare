@@ -6,12 +6,12 @@ import numpy.typing as npt
 import arff
 
 from urllib.parse import urlencode
-from typing import Literal
 from abc import ABC, abstractclassmethod
 from sklearn.preprocessing import LabelEncoder
 from sklearn.datasets import load_breast_cancer, load_digits
 from pathlib import Path
 from dataclasses import dataclass
+
 
 @dataclass
 class Dataset:

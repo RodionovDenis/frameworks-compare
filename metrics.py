@@ -10,7 +10,8 @@ from sklearn.metrics import (
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler
-from data.loader import Dataset
+
+import data
 
 
 PREPROCESSING = {
@@ -26,7 +27,7 @@ class Metric(ABC):
         self.preprocessing = PREPROCESSING[preprocessing] if preprocessing is not None else None
         self.cv = StratifiedKFold(shuffle=True, random_state=42)
 
-    def __call__(self, estimator, dataset: Dataset):
+    def __call__(self, estimator, dataset: data.Dataset):
 
         if self.preprocessing is not None:
             pipeline = Pipeline([
@@ -83,3 +84,31 @@ class MSE(Metric):
         
     def get_score(self, model, x, y):
         return mean_squared_error(y, model.predict(x))
+
+
+DATASET_TO_METRIC = {
+    data.Adult:                      F1(preprocessing='standard', average='binary'),
+    data.BreastCancer:               F1(preprocessing='standard', average='binary'),
+    data.Digits:                     Accuracy(preprocessing='standard'),
+    data.BankMarketing:              Accuracy(preprocessing='standard'),
+    data.CNAE9:                      Accuracy(preprocessing='standard'),
+    data.StatlogSegmentation:        Accuracy(preprocessing='standard'),
+    data.DryBean:                    F1(preprocessing='standard', average='macro'),
+    data.MagicGammaTelescope:        F1(preprocessing='standard', average='binary'),
+    data.Mushroom:                   F1(preprocessing='standard', average='binary'),
+    data.Semeion:                    Accuracy(preprocessing='standard'),
+    data.Ecoli:                      F1(preprocessing='standard', average='macro'),
+    data.CreditApproval:             F1(preprocessing='standard', average='binary'),
+    data.Balance:                    F1(preprocessing='standard', average='macro'),
+    data.Parkinsons:                 F1(preprocessing='standard', average='binary'),
+    data.Zoo:                        F1(preprocessing='standard', average='macro'),
+    data.CylinderBands:              F1(preprocessing='standard', average='binary'),
+    data.ConnectionBenchVowel:       Accuracy(preprocessing='standard'),
+    data.Banana:                     F1(preprocessing='standard', average='binary'),
+    data.Banknote:                   F1(preprocessing='standard', average='binary'),
+    data.CarEvaluation:              F1(preprocessing='standard', average='macro'),
+    data.Letter:                     Accuracy(preprocessing='standard'),
+    data.OptDigits:                  Accuracy(preprocessing='standard'),
+    data.Student:                    F1(preprocessing='standard', average='macro'),
+    data.Wilt:                       F1(preprocessing='standard', average='binary')
+}
