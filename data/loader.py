@@ -239,7 +239,8 @@ class Zoo(TextParser):
     
     def load_dataset(self) -> Dataset:
         features, targets = self.parse_file(index_target=-1, feature_skip=0)
-        return Dataset('Zoo', features, targets)
+        indexes = np.isin(targets, [2, 4], invert=True)
+        return Dataset('Zoo', features[indexes], LabelEncoder().fit_transform(targets[indexes]))
 
 
 class CylinderBands(TextParser):
@@ -267,6 +268,60 @@ class Banana(ArffParser):
     def load_dataset(self) -> Dataset:
         features, targets = self.parse_file(index_target=-1)
         return Dataset('Banana', features, targets)
+    
+
+class Banknote(ArffParser):
+    def __init__(self):
+        super().__init__('banknote-authentication.arff')
+        
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_file(index_target=-1)
+        return Dataset('Banknote', features, targets)
+
+
+class CarEvaluation(ArffParser):
+    def __init__(self):
+        super().__init__('car-evaluation.arff')
+        
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_file(index_target=-1)
+        return Dataset('CarEvaluation', features, targets)
+
+
+class Letter(ArffParser):
+    def __init__(self):
+        super().__init__('letter.arff')
+        
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_file(index_target=-1)
+        return Dataset('Letter', features, targets)
+
+
+class OptDigits(ArffParser):
+    def __init__(self):
+        super().__init__('optdigits.arff')
+        
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_file(index_target=-1)
+        return Dataset('OptDigits', features, targets)
+
+
+class Student(ArffParser):
+    def __init__(self):
+        super().__init__('student.arff')
+        
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_file(index_target=-1)
+        return Dataset('Student', features, targets)
+
+
+class Wilt(ArffParser):
+    def __init__(self):
+        super().__init__('wilt.arff')
+        
+    def load_dataset(self) -> Dataset:
+        features, targets = self.parse_file(index_target=-1)
+        return Dataset('Wilt', features, targets)
 
 
 def get_datasets(*args) -> list[Dataset]:

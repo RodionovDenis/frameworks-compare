@@ -6,6 +6,7 @@ from hyperparameter import Hyperparameter
 from frameworks import Searcher
 from utils import get_commit_hash
 from data.loader import Parser, get_datasets
+from data import DATASET_TO_METRIC
 from metrics import Metric
 
 from multiprocessing import Pool
@@ -18,30 +19,34 @@ class Experiment:
     def __init__(self, estimator,
                        hyperparams: dict[str, Hyperparameter],
                        searchers: list[Searcher],
-                       datasets: list[Parser],
-                       metric: Metric):
+                       parsers: list[Parser],
+                       metric: Metric = None):
 
         self.estimator = estimator
         self.hyperparams = hyperparams
         self.searchers = {str(x): x for x in searchers}
-        self.datasets = {x.name: x for x in get_datasets(*datasets)}
-        self.metric = metric
+        
+        datasets = get_datasets(*parsers)
+        
+        self.datasets = {x.name: x for x in datasets}
+        self.metrics = {x.name: DATASET_TO_METRIC[y] if (metric is None) else metric
+                        for x, y in zip(datasets, parsers)}
 
     def run(self, n_jobs: int = 1,
                   non_deterministic_trials: int = 1,
-                  mlflow_uri: str | None = None):
+                  is_mlflow_log: bool = False):
 
         assert non_deterministic_trials > 0, 'Something very strange'
         assert n_jobs >= -1, 'Something very strange'
         self.non_deterministic_trials = non_deterministic_trials
         self.n_jobs = n_jobs
 
-        if mlflow_uri is None:
+        if not is_mlflow_log:
             frame = self.start_pool()
             return pd.DataFrame(frame).applymap(self.apply)
 
         assert len(self.datasets) == 1, 'Mlflow supports one dataset'
-        self.setup_mlflow(mlflow_uri)
+        self.setup_mlflow('http://94.228.124.235:5000')
         dataset_name = next(iter(self.datasets))
         with mlflow.start_run(experiment_id=self.id, run_name=dataset_name):
             self.log_params()
@@ -74,8 +79,8 @@ class Experiment:
         return {'min': np.min(x), 'max': np.max(x), 'mean': np.mean(x)}
 
     def objective(self, dname: str, sname: str, experiment_name: str):
-        searcher, dataset = self.searchers[sname], self.datasets[dname]
-        value = searcher.tune(self.estimator, self.hyperparams, dataset, self.metric,
+        searcher, dataset, metric = self.searchers[sname], self.datasets[dname], self.metrics[dname]
+        value = searcher.tune(self.estimator, self.hyperparams, dataset, metric,
                               experiment_name=experiment_name)
         return dname, sname, value
 
@@ -85,7 +90,8 @@ class Experiment:
             mlflow.log_param(f'Framework/{searcher.framework_name}-version', searcher.framework_version())
         for name, param in self.hyperparams.items():
             mlflow.log_param(f'Hyperparam/{name}', str(param))
-        mlflow.log_param('Experiment/metric', self.metric.log_params())
+        for value in self.metrics.values():
+            mlflow.log_param('Experiment/metric', value.log_params())
         mlflow.log_param('Experiment/n_jobs', self.n_jobs)
         mlflow.log_param('Experiment/non_deterministic_trials', self.non_deterministic_trials)
         mlflow.log_param('Utils/frameworks-compare-hash-commit', get_commit_hash())
