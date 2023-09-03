@@ -6,7 +6,7 @@ from hyperparameter import Hyperparameter
 from frameworks import Searcher
 from utils import get_commit_hash
 from data.loader import Parser, get_datasets
-from data import DATASET_TO_METRIC
+from metrics import DATASET_TO_METRIC
 from metrics import Metric
 
 from multiprocessing import Pool
@@ -25,6 +25,9 @@ class Experiment:
         self.estimator = estimator
         self.hyperparams = hyperparams
         self.searchers = {str(x): x for x in searchers}
+
+        if not isinstance(parsers, list):
+            parsers = [parsers]
         
         datasets = get_datasets(*parsers)
         
