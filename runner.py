@@ -1,6 +1,9 @@
 from experiment import Experiment
 from argparser import parse_arguments
 from frameworks import Default, OptunaSearcher, HyperoptSearcher, iOptSearcher
+from utils import save_result
+
+import matplotlib.pyplot as plt
 
 
 if __name__ == '__main__':
@@ -22,3 +25,4 @@ if __name__ == '__main__':
                             arguments.dataset)
     
     result = experiment.run()
+    save_result('result.png', result)

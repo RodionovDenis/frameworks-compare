@@ -34,7 +34,7 @@ class Experiment:
 
     def run(self, n_jobs: int = 1,
                   non_deterministic_trials: int = 1,
-                  is_mlflow_log: bool = False):
+                  is_mlflow_log: bool = False) -> pd.DataFrame:
 
         assert non_deterministic_trials > 0, 'Something very strange'
         assert n_jobs >= -1, 'Something very strange'
