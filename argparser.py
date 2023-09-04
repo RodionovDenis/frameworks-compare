@@ -69,14 +69,17 @@ def get_estimator(name: str) -> SVC | XGBClassifier | MLPClassifier:
         return XGBClassifier
     elif name == 'mlp':
         return MLPClassifier
-    raise ValueError(f'Estimator {name} do not support')
+    raise ValueError(f'Estimator "{name}" do not support')
 
 
-def get_dataset(name: str) -> data.Dataset:
+def get_datasets(names: str) -> data.Dataset:
     try:
-        return NAME_TO_DATASET[name]
+        result = []
+        for x in names:
+            result.append(NAME_TO_DATASET[x])
+        return result
     except KeyError:
-        raise ValueError(f' Dataset {name} do not support')
+        raise ValueError(f' Dataset "{x}" do not support')
 
 
 def parse_arguments():
@@ -84,17 +87,17 @@ def parse_arguments():
     --max-iter:
         int, positive
     --dataset:
-        name of dataset, see all names in data/__init__.py
+        names of dataset, see all names in data/__init__.py
     --method:
         must be or svc, or xgb, or mlp
     
     """
     parser = ArgumentParser()
     parser.add_argument('--max-iter', type=int)
-    parser.add_argument('--dataset')
+    parser.add_argument('--dataset', nargs='*')
     parser.add_argument('--method')
     args = parser.parse_args()
     assert args.max_iter > 0, 'Max iter must be positive'
     return ConsoleArgument(args.max_iter,
                            get_estimator(args.method),
-                           get_dataset(args.dataset))
+                           get_datasets(args.dataset))

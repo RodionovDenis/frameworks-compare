@@ -25,9 +25,6 @@ class Experiment:
         self.estimator = estimator
         self.hyperparams = hyperparams
         self.searchers = {str(x): x for x in searchers}
-
-        if not isinstance(parsers, list):
-            parsers = [parsers]
         
         datasets = get_datasets(*parsers)
         

@@ -16,8 +16,8 @@ if __name__ == '__main__':
         iOptSearcher(arguments.max_iter)
     ]
 
-    experiment = Experiment(arguments.estimator, 
-                            arguments.hyperparams, 
+    experiment = Experiment(arguments.estimator,
+                            arguments.hyperparams,
                             seachers,
                             arguments.dataset)
     
