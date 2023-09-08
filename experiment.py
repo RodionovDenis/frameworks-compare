@@ -46,7 +46,7 @@ class Experiment:
             return pd.DataFrame(frame).applymap(self.apply)
 
         assert len(self.datasets) == 1, 'Mlflow supports one dataset'
-        self.setup_mlflow('http://94.228.124.235:5000')
+        self.setup_mlflow('http://localhost:5000')
         dataset_name = next(iter(self.datasets))
         with mlflow.start_run(experiment_id=self.id, run_name=dataset_name):
             self.log_params()

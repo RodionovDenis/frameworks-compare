@@ -3,8 +3,6 @@ from argparser import parse_arguments
 from frameworks import Default, OptunaSearcher, HyperoptSearcher, iOptSearcher
 from utils import save_result
 
-import matplotlib.pyplot as plt
-
 
 if __name__ == '__main__':
     arguments = parse_arguments()
@@ -24,5 +22,5 @@ if __name__ == '__main__':
                             seachers,
                             arguments.dataset)
     
-    result = experiment.run()
+    result = experiment.run(is_mlflow_log=True)
     save_result('result.png', result)
