@@ -15,6 +15,7 @@ METHOD_TO_HYPERPARAMS = {
         'C': Numerical('int', 1, 1e10, is_log_scale=True),
         'kernel': Categorial('poly', 'rbf', 'sigmoid')
     },
+
     XGBClassifier: {
         'n_estimators': Numerical('int', 10, 200),
         'max_depth': Numerical('int', 5, 20),
@@ -24,6 +25,7 @@ METHOD_TO_HYPERPARAMS = {
         'colsample_bytree': Numerical('float', 0.05, 0.95),
         'learning_rate': Numerical('float', 0.001, 0.1, is_log_scale=True)
     },
+
     MLPClassifier: {
         'hidden_layer_sizes': Numerical('int', 2, 150),
         'activation': Categorial('identity', 'logistic', 'tanh', 'relu'),
