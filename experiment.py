@@ -1,9 +1,11 @@
 import pandas as pd
 import mlflow
+from mlflow.entities import Metric as M
 import numpy as np
+import json
 
 from hyperparameter import Hyperparameter
-from frameworks import Searcher
+from frameworks import Searcher, Point
 from utils import get_commit_hash
 from data.loader import Parser, get_datasets
 from metrics import DATASET_TO_METRIC
@@ -13,6 +15,8 @@ from multiprocessing import Pool
 from itertools import product
 from collections import defaultdict
 from functools import partial
+
+from time import time
 
 
 class Experiment:
@@ -42,27 +46,35 @@ class Experiment:
         self.n_jobs = n_jobs
 
         if not is_mlflow_log:
-            frame = self.start_pool()
+            self.mlflow_logging = False
+            frame, time = self.start_pool()
             return pd.DataFrame(frame).applymap(self.apply)
 
         assert len(self.datasets) == 1, 'Mlflow supports one dataset'
-        self.setup_mlflow('http://192.168.2.126:8892/')
+        self.mlflow_logging = True
         dataset_name = next(iter(self.datasets))
-        with mlflow.start_run(experiment_id=self.id, run_name=dataset_name):
-            self.log_params()
-            frame = self.start_pool()
-            self.log_final_metric(frame, dataset_name)
-        return pd.DataFrame(frame).applymap(self.apply)
+
+        self.client, self.run_id = self.setup_mlflow('http://192.168.2.126:8892/', dataset_name)
+        self.log_params()
+        frame, time = self.start_pool()
+        self.log_final_metric(frame, dataset_name)
+        self.client.set_terminated(self.run_id)
+        
+        return pd.DataFrame(frame).applymap(self.apply), time
 
     def start_pool(self):
         trials = self.get_trials()
         frame = defaultdict(lambda: defaultdict(list))
 
         with Pool(self.n_jobs) as pool:
+            start = time()
             result = pool.starmap(self.objective, trials)
+            time_value = time() - start
+
             for dataset, searcher, value in result:
                 frame[searcher][dataset].append(value)
-        return frame
+
+        return frame, time_value
     
     def get_trials(self):
         names = []
@@ -77,38 +89,61 @@ class Experiment:
         if len(x) == 1:
             return x.pop()
         return {'min': np.min(x), 'max': np.max(x), 'mean': np.mean(x)}
+    
+    def log_metrics(self, experiment_name, points: list[Point]):
+        metrics = []
+        for i, p in enumerate(points, start=1):
+            m = M(f'trials/{experiment_name}/metric', p.value, int(p.timepoint), i)
+            metrics.append(m)
+            for key, value in p.params.items():
+                m = M(f'trials/{experiment_name}/{key}', value, int(p.timepoint), i)
+                metrics.append(m)
+        self.client.log_batch(self.run_id, metrics)
+
 
     def objective(self, dname: str, sname: str, experiment_name: str):
         searcher, dataset, metric = self.searchers[sname], self.datasets[dname], self.metrics[dname]
-        value = searcher.tune(self.estimator, self.hyperparams, dataset, metric,
-                              experiment_name=experiment_name)
-        return dname, sname, value
+        points = searcher.tune(self.estimator, self.hyperparams, dataset, metric)
+        if self.mlflow_logging:
+            self.log_metrics(experiment_name, points)
+        return dname, sname, max(x.value for x in points)
 
     def log_params(self):
         for i, (name, searcher) in enumerate(self.searchers.items(), start=1):
-            mlflow.log_param(f'Searcher/{i}', name)
-            mlflow.log_param(f'Framework/{searcher.framework_name}-version', searcher.framework_version())
+            self.client.log_param(self.run_id, f'Searcher/{i}', name)
+            self.client.log_param(self.run_id, f'Framework/{searcher.framework_name}-version', searcher.framework_version())
         for name, param in self.hyperparams.items():
-            mlflow.log_param(f'Hyperparam/{name}', str(param))
+            self.client.log_param(self.run_id, f'Hyperparam/{name}', str(param))
         for value in self.metrics.values():
-            mlflow.log_param('Experiment/metric', value.log_params())
-        mlflow.log_param('Experiment/n_jobs', self.n_jobs)
-        mlflow.log_param('Experiment/non_deterministic_trials', self.non_deterministic_trials)
-        mlflow.log_param('Utils/frameworks-compare-hash-commit', get_commit_hash())
+            self.client.log_param(self.run_id, 'Experiment/metric', value.log_params())
+        self.client.log_param(self.run_id, 'Experiment/n_jobs', self.n_jobs)
+        self.client.log_param(self.run_id, 'Experiment/non_deterministic_trials', self.non_deterministic_trials)
+        self.client.log_param(self.run_id, 'Utils/frameworks-compare-hash-commit', get_commit_hash())
     
     def log_final_metric(self, frame, dataset_name):
-        mlflow.log_param('Utils/final-metric', 'mean')
+        self.client.log_param(self.run_id, 'Utils/final-metric', 'mean')
         frameworks_metric = defaultdict(list)
         for name, searcher in self.searchers.items():
             values = frame[name][dataset_name]
             frameworks_metric[searcher.framework_name].append(np.mean(values))
+        metrics = []
         for name, values in frameworks_metric.items():
-            mlflow.log_metric(name, np.max(values))
+            m = M(name, max(values), 1, 0)
+            metrics.append(m)
 
-    def setup_mlflow(self, mlflow_uri):
-        mlflow.set_tracking_uri(mlflow_uri)
+        self.client.log_batch(self.run_id, metrics)
+
+    def setup_mlflow(self, mlflow_uri, dataset_name):
+        client = mlflow.MlflowClient(mlflow_uri)
         if isinstance(self.estimator, partial):
             experiment_name = self.estimator.func.__name__.lower()
         else:
             experiment_name = self.estimator.__name__.lower()
-        self.id = mlflow.set_experiment(experiment_name).experiment_id
+        
+        if (experiment := client.get_experiment_by_name(experiment_name)) is not None:
+            experiment_id = experiment.experiment_id
+        else:
+            experiment_id = client.create_experiment(experiment_name)
+        
+        run = client.create_run(experiment_id, run_name=dataset_name, start_time=int(time() * 1000))
+        return client, run.info.run_id

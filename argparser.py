@@ -7,6 +7,7 @@ from hyperparameter import Hyperparameter, Numerical, Categorial
 from sklearn.svm import SVC
 from xgboost import XGBClassifier
 from sklearn.neural_network import MLPClassifier
+from functools import partial
 
 
 METHOD_TO_HYPERPARAMS = {
@@ -61,12 +62,15 @@ class ConsoleArgument:
     hyperparams: Hyperparameter = field(init=False)
 
     def __post_init__(self):
-        self.hyperparams = METHOD_TO_HYPERPARAMS[self.estimator]
+        estimator = self.estimator
+        if isinstance(estimator, partial):
+            estimator = estimator.func
+        self.hyperparams = METHOD_TO_HYPERPARAMS[estimator]
 
 
 def get_estimator(name: str) -> SVC | XGBClassifier | MLPClassifier:
     if name == 'svc':
-        return SVC
+        return partial(SVC, max_iter=1000)
     elif name == 'xgb':
         return XGBClassifier
     elif name == 'mlp':

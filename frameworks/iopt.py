@@ -5,18 +5,20 @@ from iOpt.problem import Problem
 from iOpt.solver import Solver
 from iOpt.solver_parametrs import SolverParameters
 
-from dataclasses import astuple
 from hyperparameter import Hyperparameter, Numerical, Categorial
 from utils import get_commit_hash
 
-from .interface import Searcher
+from .interface import Searcher, Point
 
 
 class Estimator(Problem):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, searcher: Searcher,
+                 float_hyperparams: dict[str, Numerical], discrete_hyperparams: dict[str, Hyperparameter],
+                 points: list[Point]):
         super().__init__()
 
-        self.estimator, float_hyperparams, discrete_hyperparams, self.dataset, self.metric = args
+        self.points = points
+        self.searcher = searcher
 
         self.number_of_float_variables = len(float_hyperparams)
         self.number_of_discrete_variables = len(discrete_hyperparams)
@@ -24,27 +26,28 @@ class Estimator(Problem):
         self.number_of_objectives = 1
 
         self.float_variables_types, self.is_log_float = [], []
-        for name, param in float_hyperparams.items():
+        for name, p in float_hyperparams.items():
             self.float_variable_names.append(name)
-            type, min_v, max_v, log = astuple(param)
-            self.float_variables_types.append(type)
-            self.lower_bound_of_float_variables.append(np.log(min_v) if log else min_v)
-            self.upper_bound_of_float_variables.append(np.log(max_v) if log else max_v)
-            self.is_log_float.append(log)
+            self.float_variables_types.append(p.type)
+            self.lower_bound_of_float_variables.append(np.log(p.min_value) if p.is_log_scale else p.min_value)
+            self.upper_bound_of_float_variables.append(np.log(p.max_value) if p.is_log_scale else p.max_value)
+            self.is_log_float.append(p.is_log_scale)
             
-        for name, param in discrete_hyperparams.items():
+        for name, p in discrete_hyperparams.items():
             self.discrete_variable_names.append(name)
-            if isinstance(param, Numerical):
-                type, min_v, max_v, log = astuple(param)
+            if isinstance(p, Numerical):
                 assert type == 'int', 'Type must be int'
-                assert not log, 'Log must be off'
-                self.discrete_variable_values.append([str(x) for x in range(min_v, max_v + 1)])
-            elif isinstance(param, Categorial):
-                self.discrete_variable_values.append(param.values)
+                assert not p.is_log_scale, 'Log must be off'
+                self.discrete_variable_values.append([str(x) for x in range(p.min_value, p.max_value + 1)])
+            elif isinstance(p, Categorial):
+                self.discrete_variable_values.append(p.values)
 
     def calculate(self, point, function_value):
             arguments = self.__get_argument_dict(point)
-            function_value.value = -self.metric(arguments)
+            custom_point = self.searcher._calculate_metric(arguments)
+            self.points.append(custom_point)
+            
+            function_value.value = -custom_point.value
             return function_value
 
     def __get_argument_dict(self, point):
@@ -69,16 +72,17 @@ class iOptSearcher(Searcher):
 
         self.kwargs = kwargs
 
-    def find_best_value(self):
+    def _get_points(self):
 
         floats, discretes = self.split_hyperparams()
-        problem = Estimator(self.estimator, floats, discretes, self.dataset, self.calculate_metric)
+        points = []
+        problem = Estimator(self, floats, discretes, points)
         framework_params = SolverParameters(iters_limit=self.max_iter, **self.kwargs)
         solver = Solver(problem, parameters=framework_params)
-        solver_info = solver.solve()
-        return np.abs(solver_info.best_trials[0].function_values[-1].value)
+        solver.solve()
+        return points
     
-    def get_searcher_params(self):
+    def _get_searcher_params(self):
         return self.kwargs.copy()
     
     def framework_version(self):
@@ -94,8 +98,7 @@ class iOptSearcher(Searcher):
         return floats, discretes
             
     @staticmethod
-    def is_discrete_hyperparam(x: Hyperparameter):
-        if isinstance(x, Categorial):
-            return True
-        type, min_v, max_v, log = astuple(x)
-        return (type == 'int') and (not log) and (max_v - min_v + 1 <= 5)
+    def is_discrete_hyperparam(p: Hyperparameter):
+        if isinstance(p, Numerical):
+            return (p.type == 'int') and (not p.is_log_scale) and (p.max_value - p.min_value + 1 <= 5)
+        return True

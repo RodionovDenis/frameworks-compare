@@ -1,7 +1,10 @@
-from .interface import Searcher
+from .interface import Searcher, Point
 
-import mlflow
 import sklearn
+from hyperparameter import Hyperparameter
+from data import Dataset
+from metrics import Metric
+from time import time
 
 
 class Default(Searcher):
@@ -9,21 +12,15 @@ class Default(Searcher):
         super().__init__(framework_name='Default',
                          max_iter=max_iter,
                          is_deterministic=True)
-    
-    def find_best_value(self):
-        model = self.estimator()
-        value = self.metric(model, self.dataset)
-        if mlflow.active_run() is not None:
-            self.log_values(value)
-        return value
-    
-    def get_searcher_params(self):
-        return {}
-
+        
     def framework_version(self):
         return f'{sklearn.__version__} (sklearn-version)'
     
-    def log_values(self, value):
-        for _ in range(self.max_iter):
-            self.current_step += 1
-            mlflow.log_metric(self.log_metric, value, step=self.current_step)
+    def _get_searcher_params(self):
+        return {}
+    
+    def _get_points(self) -> list[Point]:
+
+        model = self.estimator()
+        value = self.metric(model, self.dataset)
+        return [Point(time(), value, {}) for _ in range(self.max_iter)]

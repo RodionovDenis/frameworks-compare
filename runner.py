@@ -1,12 +1,13 @@
 from experiment import Experiment
 from argparser import parse_arguments
-from frameworks import OptunaSearcher, HyperoptSearcher, iOptSearcher
+from frameworks import OptunaSearcher, HyperoptSearcher, iOptSearcher, Default
 
 
 if __name__ == '__main__':
     arguments = parse_arguments()
     
     seachers = [
+        Default(arguments.max_iter),
         OptunaSearcher(arguments.max_iter, algorithm='random'),
         OptunaSearcher(arguments.max_iter, algorithm='tpe'),
         OptunaSearcher(arguments.max_iter, algorithm='cmaes'),
@@ -21,4 +22,5 @@ if __name__ == '__main__':
                             seachers,
                             arguments.dataset)
     
-    result = experiment.run(non_deterministic_trials=10)
+    results, time = experiment.run(non_deterministic_trials=10, n_jobs=60, is_mlflow_log=True)
+    print(time)

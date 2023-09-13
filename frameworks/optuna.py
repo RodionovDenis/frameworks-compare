@@ -1,9 +1,8 @@
 import optuna
+from functools import partial
 
-from dataclasses import astuple
 from hyperparameter import Hyperparameter, Numerical, Categorial
-
-from .interface import Searcher
+from .interface import Searcher, Point
 
 
 ALGORITHMS = {
@@ -25,31 +24,38 @@ class OptunaSearcher(Searcher):
         if self.algorithm == 'cmaes':
             self.algorithm_kwargs['warn_independent_sampling'] = False
 
-    def find_best_value(self):
+    def _get_points(self):
         optuna.logging.disable_default_handler()
         study = optuna.create_study(direction='maximize',
                                     sampler=self.func_algorithm(**self.algorithm_kwargs))
-        study.optimize(self.objective, n_trials=self.max_iter)
-        return study.best_value
+        
+        points = []
+        objective = partial(self.__objective, points=points)
+        study.optimize(objective, n_trials=self.max_iter)
+        return points
     
-    def get_searcher_params(self):
+    def _get_searcher_params(self):
         return {'algorithm': self.algorithm}
     
     def framework_version(self):
         return optuna.__version__
 
-    def objective(self, trial: optuna.Trial):
-        arguments = {name: self.get_value(name, param, trial) for name, param in self.hyperparams.items()}
-        return self.calculate_metric(arguments)
+    def __objective(self, trial: optuna.Trial, points: list[Point]):
+        arguments = {}
+        for name, p in self.hyperparams.items():
+            arguments[name] = self.__get_suggest(name, p, trial)
+        
+        point = self._calculate_metric(arguments)
+        points.append(point)
+        return point.value
     
     @staticmethod
-    def get_value(name: str, param: Hyperparameter, trial: optuna.Trial):
+    def __get_suggest(name: str, p: Hyperparameter, trial: optuna.Trial):
         functions = {
             'int': trial.suggest_int,
             'float': trial.suggest_float
         }
-        if isinstance(param, Numerical):
-            type, min_v, max_v, log = astuple(param)
-            return functions[type](name, min_v, max_v, log=log)
-        elif isinstance(param, Categorial):
-            return trial.suggest_categorical(name, param.values)
+        if isinstance(p, Numerical):
+            return functions[p.type](name, p.min_value, p.max_value, log=p.is_log_scale)
+        elif isinstance(p, Categorial):
+            return trial.suggest_categorical(name, p.values)
