@@ -2,7 +2,6 @@ import pandas as pd
 import mlflow
 from mlflow.entities import Metric as M
 import numpy as np
-import json
 
 from hyperparameter import Hyperparameter
 from frameworks import Searcher, Point
@@ -17,6 +16,9 @@ from collections import defaultdict
 from functools import partial
 
 from time import time
+
+from sklearn.exceptions import ConvergenceWarning
+from sklearn.utils._testing import ignore_warnings
 
 
 class Experiment:
@@ -36,6 +38,7 @@ class Experiment:
         self.metrics = {x.name: DATASET_TO_METRIC[y] if (metric is None) else metric
                         for x, y in zip(datasets, parsers)}
 
+    @ignore_warnings(category=ConvergenceWarning)
     def run(self, n_jobs: int = 1,
                   non_deterministic_trials: int = 1,
                   is_mlflow_log: bool = False) -> pd.DataFrame:
