@@ -2,6 +2,7 @@ import pandas as pd
 import mlflow
 from mlflow.entities import Metric as M
 import numpy as np
+import json
 
 from hyperparameter import Hyperparameter
 from frameworks import Searcher, Point
@@ -9,6 +10,7 @@ from utils import get_commit_hash
 from data.loader import Parser, get_datasets
 from metrics import DATASET_TO_METRIC
 from metrics import Metric
+from pathlib import Path
 
 from multiprocessing import Pool
 from itertools import product
@@ -19,6 +21,7 @@ from time import time
 
 from sklearn.exceptions import ConvergenceWarning
 from sklearn.utils._testing import ignore_warnings
+from dataclasses import asdict
 
 
 class Experiment:
@@ -37,20 +40,29 @@ class Experiment:
         self.datasets = {x.name: x for x in datasets}
         self.metrics = {x.name: DATASET_TO_METRIC[y] if (metric is None) else metric
                         for x, y in zip(datasets, parsers)}
+        
+        if isinstance(estimator, partial):
+            experiment_name = self.estimator.func.__name__.lower()
+        else:
+            experiment_name = self.estimator.__name__.lower()
+        
+        self.global_directory = f'{experiment_name}_{int(time())}'
 
     @ignore_warnings(category=ConvergenceWarning)
     def run(self, n_jobs: int = 1,
                   non_deterministic_trials: int = 1,
-                  is_mlflow_log: bool = False) -> pd.DataFrame:
+                  is_mlflow_log: bool = False,
+                  is_json_save: bool = True) -> pd.DataFrame:
 
         assert non_deterministic_trials > 0, 'Something very strange'
         assert n_jobs >= -1, 'Something very strange'
         self.non_deterministic_trials = non_deterministic_trials
         self.n_jobs = n_jobs
+        self.json_logging = is_json_save
 
         if not is_mlflow_log:
             self.mlflow_logging = False
-            frame, time = self.start_pool()
+            frame = self.start_pool()
             return pd.DataFrame(frame).applymap(self.apply)
 
         assert len(self.datasets) == 1, 'Mlflow supports one dataset'
@@ -59,26 +71,24 @@ class Experiment:
 
         self.client, self.run_id = self.setup_mlflow('http://192.168.2.126:8892/', dataset_name)
         self.log_params()
-        frame, time = self.start_pool()
+        frame = self.start_pool()
         self.log_final_metric(frame, dataset_name)
         self.client.set_terminated(self.run_id)
         
-        return pd.DataFrame(frame).applymap(self.apply), time
+        return pd.DataFrame(frame).applymap(self.apply)
 
     def start_pool(self):
         trials = self.get_trials()
         frame = defaultdict(lambda: defaultdict(list))
 
         with Pool(self.n_jobs) as pool:
-            start = time()
             result = pool.starmap(self.objective, trials)
-            time_value = time() - start
 
             for dataset, searcher, value in result:
                 frame[searcher][dataset].append(value)
 
-        return frame, time_value
-    
+        return frame
+
     def get_trials(self):
         names = []
         for i, (name, searcher) in enumerate(self.searchers.items(), start=1):
@@ -103,13 +113,24 @@ class Experiment:
                 metrics.append(m)
         self.client.log_batch(self.run_id, metrics)
 
-
     def objective(self, dname: str, sname: str, experiment_name: str):
         searcher, dataset, metric = self.searchers[sname], self.datasets[dname], self.metrics[dname]
         points = searcher.tune(self.estimator, self.hyperparams, dataset, metric)
         if self.mlflow_logging:
             self.log_metrics(experiment_name, points)
+        if self.json_logging:
+            self.log_json(dname, experiment_name, points)
         return dname, sname, max(x.value for x in points)
+
+    def log_json(self, dataset, experiment_name, points: list[Point]):
+        splitter = experiment_name.split('/')
+        dir_, filename = '/'.join(splitter[:-1]), splitter[-1]
+        path = f'.logs/{self.global_directory}/{dataset}/{dir_}'
+        Path(path).mkdir(parents=True, exist_ok=True)
+        info = {i: asdict(x) for i, x in enumerate(points, start=1)}
+        with open(f'{path}/{filename}.json', 'w') as f:
+            json.dump(info, f, indent=4)
+
 
     def log_params(self):
         for i, (name, searcher) in enumerate(self.searchers.items(), start=1):

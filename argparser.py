@@ -72,7 +72,7 @@ def get_estimator(name: str) -> SVC | XGBClassifier | MLPClassifier:
     if name == 'svc':
         return partial(SVC, max_iter=1000)
     elif name == 'xgb':
-        return XGBClassifier
+        return partial(XGBClassifier, n_jobs=1)
     elif name == 'mlp':
         return MLPClassifier
     raise ValueError(f'Estimator "{name}" do not support')

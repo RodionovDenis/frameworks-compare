@@ -163,3 +163,4 @@ data/datasets
 *.ipynb
 mlruns/
 .*out
+.logs

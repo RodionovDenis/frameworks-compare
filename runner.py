@@ -22,5 +22,4 @@ if __name__ == '__main__':
                             seachers,
                             arguments.dataset)
     
-    results, time = experiment.run(non_deterministic_trials=10, n_jobs=60, is_mlflow_log=True)
-    print(time)
+    experiment.run(non_deterministic_trials=10, n_jobs=60)
